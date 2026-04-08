@@ -1,0 +1,13 @@
+# 1. Bỏ qua môi trường ảo của Python (thư mục venv có chấm xanh trong ảnh)
+backend/venv/
+__pycache__/
+*.pyc
+
+# 2. Bỏ qua thư viện tải về của Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# 3. Bỏ qua TẤT CẢ các file biến môi trường chứa thông tin bảo mật
+**/.env
+.env

@@ -1,0 +1,68 @@
+export interface User {
+  id: number
+  name: string
+  email: string
+  grade: number
+}
+
+export interface AuthToken {
+  access_token: string
+  token_type: string
+  user: User
+}
+
+export interface Message {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+export interface ChatSession {
+  id: number
+  created_at: string
+  messages: Message[]
+}
+
+export interface Question {
+  id: number
+  content: string
+  topic: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  has_image: boolean
+  source_image_url: string | null
+  created_at: string
+  last_used_at: string | null
+  review_count: number
+  source_exam_id: number
+}
+
+export interface SourceExam {
+  id: number
+  title: string
+  image_url: string | null
+  uploaded_at: string
+  questions: Question[]
+}
+
+export interface ReviewExam {
+  id: number
+  title: string
+  created_at: string
+  questions: Question[]
+}
+
+export interface QuestionSet {
+  id: number
+  folder_id: number
+  name: string
+  created_at: string
+  questions: Question[]
+}
+
+export interface Folder {
+  id: number
+  name: string
+  created_at: string
+  question_sets: QuestionSet[]
+}
