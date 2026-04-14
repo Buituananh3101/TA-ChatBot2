@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.database import engine, Base
 from app import models  # noqa: F401 — import để Base nhận diện tất cả models
-from app.routers import auth, chat, upload, problems, review, library
+from app.routers import auth, chat, upload, problems, review, library, stats
 
 Base.metadata.create_all(bind=engine)
 
@@ -17,18 +17,30 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+from fastapi import Request
+import logging
+
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        logging.error(f"Dòng lỗi cực kỳ quan trọng ở đây: {e}")
+        raise e
+
 app.include_router(auth.router,     prefix="/api/auth")
 app.include_router(chat.router,     prefix="/api/chat")
-app.include_router(upload.router,   prefix="/api/upload")
+app.include_router(upload.router,   prefix="/api/upload")   # chỉ 1 lần
 app.include_router(problems.router, prefix="/api/problems")
 app.include_router(review.router,   prefix="/api/review")
 app.include_router(library.router,  prefix="/api/library")
+app.include_router(stats.router,    prefix="/api/stats")    # FIX: thêm prefix
 
 @app.get("/")
 def root():

@@ -13,5 +13,6 @@ class User(Base):
     grade      = Column(Integer, default=10)
     created_at = Column(DateTime, server_default=func.now())
 
-    sessions   = relationship("ChatSession", back_populates="user")
-    questions  = relationship("Question", back_populates="user")
+    sessions     = relationship("ChatSession", back_populates="user")
+    questions    = relationship("Question", back_populates="user")
+    source_exams = relationship("SourceExam", back_populates="user")  # FIX: thêm dòng này

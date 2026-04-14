@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { libraryAPI } from '../services/api'
 import type { Folder, QuestionSet } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
+import { useStudyTracker } from '../hooks/useStudyTracker'
+
 
 // ── Micro-components ──────────────────────────────────────────────────────────
 
@@ -78,6 +80,7 @@ const DIFFICULTIES = [
 ]
 
 export function DocumentsPage() {
+  useStudyTracker('documents')  
   const [folders, setFolders] = useState<Folder[]>([])
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null)
   const [sets, setSets] = useState<QuestionSet[]>([])

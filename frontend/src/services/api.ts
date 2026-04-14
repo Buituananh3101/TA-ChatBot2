@@ -68,24 +68,23 @@ export const reviewAPI = {
   getExam: (id: number) => api.get(`/review/exams/${id}`),
   deleteExam: (id: number) => api.delete(`/review/exams/${id}`),
   getNeedsReview: (days: number) => api.get('/review/needs-review', { params: { days } }),
-  markQuestionReviewed: (questionId: number) => api.post(`/review/questions/${questionId}/mark-reviewed`),
+  // FIX: thêm tham số quality (0-5), mặc định 3
+  markQuestionReviewed: (questionId: number, quality: number = 3) =>
+    api.post(`/review/questions/${questionId}/mark-reviewed`, { quality }),
 }
 
 // ── Library ───────────────────────────────────────────
 export const libraryAPI = {
-  // Folders
   listFolders: () => api.get('/library/folders'),
   createFolder: (name: string) => api.post('/library/folders', { name }),
   renameFolder: (id: number, name: string) => api.patch(`/library/folders/${id}`, { name }),
   deleteFolder: (id: number) => api.delete(`/library/folders/${id}`),
 
-  // Question Sets
   listSets: (folderId: number) => api.get(`/library/folders/${folderId}/sets`),
   createSet: (folderId: number, name: string) => api.post(`/library/folders/${folderId}/sets`, { name }),
   renameSet: (setId: number, name: string) => api.patch(`/library/sets/${setId}`, { name }),
   deleteSet: (setId: number) => api.delete(`/library/sets/${setId}`),
 
-  // Questions in Set
   listSetQuestions: (setId: number) => api.get(`/library/sets/${setId}/questions`),
   addQuestion: (setId: number, questionId: number) => api.post(`/library/sets/${setId}/questions`, { question_id: questionId }),
   removeQuestion: (setId: number, questionId: number) => api.delete(`/library/sets/${setId}/questions/${questionId}`),

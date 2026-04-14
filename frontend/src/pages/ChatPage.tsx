@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { chatAPI } from '../services/api'
 import { Chat } from '../components/Chat/Chat'
 import type { ChatSession } from '../types'
+import { useStudyTracker } from '../hooks/useStudyTracker'
 
 export function ChatPage() {
+  useStudyTracker('chat')  
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [active, setActive] = useState<ChatSession | null>(null)
   const [loading, setLoading] = useState(true)

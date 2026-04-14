@@ -1,18 +1,26 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Boolean, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from datetime import datetime
 
 class SourceExam(Base):
     __tablename__ = "source_exams"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String(255))
+    image_url = Column(String(500))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Alias để tương thích với schema SourceExamOut dùng uploaded_at
+    @property
+    def uploaded_at(self):
+        return self.created_at
 
-    id          = Column(Integer, primary_key=True, index=True)
-    user_id     = Column(Integer, ForeignKey("users.id"), nullable=False)
-    title       = Column(String(200))
-    image_url   = Column(Text)
-    uploaded_at = Column(DateTime, server_default=func.now())
-
-    questions   = relationship("Question", back_populates="source_exam", cascade="all, delete-orphan")
+    # Relationships
+    user = relationship("User", back_populates="source_exams")
+    questions = relationship("Question", back_populates="source_exam", cascade="all, delete-orphan")
 
 class Question(Base):
     __tablename__ = "questions"
@@ -25,8 +33,14 @@ class Question(Base):
     difficulty     = Column(Enum("easy", "medium", "hard"), default="medium")
     has_image      = Column(Boolean, default=False)
     chroma_id      = Column(String(100))
+
+    # Spaced repetition fields
     last_used_at   = Column(DateTime, nullable=True)
     review_count   = Column(Integer, default=0, nullable=False)
+    next_review_at = Column(DateTime, nullable=True)
+    interval_days  = Column(Integer, default=1)
+    ease_factor    = Column(Float, default=2.5)
+
     created_at     = Column(DateTime, server_default=func.now())
 
     source_exam = relationship("SourceExam", back_populates="questions")
@@ -34,5 +48,4 @@ class Question(Base):
 
     @property
     def source_image_url(self) -> str | None:
-        """Trả về image_url của đề gốc, dùng để hiển thị ảnh trong ReviewPage."""
         return self.source_exam.image_url if self.source_exam else None

@@ -1,6 +1,7 @@
 import json
 import re
 import logging
+import asyncio
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
@@ -8,6 +9,16 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
+# ─── Custom Exceptions ────────────────────────────────────────────────────────
+
+class OCRServiceUnavailable(Exception):
+    """Exception khi Gemini API quá tải (503)"""
+    pass
+
+class OCRQuotaExceeded(Exception):
+    """Exception khi vượt quota API"""
+    pass
 
 # ─── Schema Pydantic (Structured Output) ─────────────────────────────────────
 
@@ -70,59 +81,152 @@ def normalize_content(text: str) -> str:
     text = re.sub(r'\\\(([\s\S]*?)\\\)', lambda m: f'${m.group(1)}$', text)
 
     # 3. ÉP XUỐNG DÒNG ĐÁP ÁN (Bạo lực)
-    # Tìm các cụm A., B., C., D. (có dấu cách đằng sau) và ép thêm \n\n phía trước.
-    # Dùng \n\n để Markdown ép buộc tạo thẻ <p> mới, giúp tách dòng chắc chắn 100%.
     text = re.sub(r'\s+(A[.)]\s+)', r'\n\n\1', text)
     text = re.sub(r'\s+(B[.)]\s+)', r'\n\n\1', text)
     text = re.sub(r'\s+(C[.)]\s+)', r'\n\n\1', text)
     text = re.sub(r'\s+(D[.)]\s+)', r'\n\n\1', text)
 
-    # Nếu A. nằm ở ngay sát đầu văn bản (hiếm khi xảy ra nhưng phòng hờ)
+    # Nếu A. nằm ở ngay sát đầu văn bản
     text = re.sub(r'^([A-D][.)]\s+)', r'\1', text)
 
-    # 4. Dọn dẹp khoảng trắng thừa (>2 dòng trắng liên tiếp thì gom lại)
+    # 4. Dọn dẹp khoảng trắng thừa
     text = re.sub(r'\n{3,}', '\n\n', text)
 
     return text.strip()
 
+# ─── Retry Logic Helper ───────────────────────────────────────────────────────
+
+async def call_gemini_with_retry(image_bytes: bytes, max_retries: int = 3) -> str:
+    """
+    Gọi Gemini API với retry logic.
+    - 429 quota hết hẳn (limit: 0 / per-day) → KHÔNG retry, báo lỗi ngay
+    - 429 rate limit tạm thời (per-minute)    → retry với wait ngắn
+    - 503 service unavailable                 → retry với exponential backoff
+    """
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"OCR attempt {attempt + 1}/{max_retries}")
+
+            response = await client.aio.models.generate_content(
+                model='gemini-2.5-flash',  # FIX: dùng gemini-2.5-flash thay vì 2.0-flash-exp
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'),
+                            types.Part.from_text(text=OCR_PROMPT)
+                        ]
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    max_output_tokens=4000,
+                    response_mime_type="application/json",
+                    temperature=0.1,
+                    response_schema=list[Question],
+                )
+            )
+
+            logger.info(f"OCR success on attempt {attempt + 1}")
+            return response.text
+
+        except Exception as e:
+            error_str = str(e)
+            last_error = e
+
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                # Phân biệt quota hết hẳn (per-day) vs rate limit tạm thời (per-minute)
+                is_daily_quota_exhausted = (
+                    "PerDay" in error_str
+                    or "free_tier_requests" in error_str
+                    or "limit: 0" in error_str
+                )
+
+                if is_daily_quota_exhausted:
+                    # Quota ngày hết → retry vô ích, báo lỗi ngay
+                    logger.error(f"OCR daily quota exhausted, not retrying: {error_str[:200]}")
+                    raise OCRQuotaExceeded(
+                        "Đã hết hạn mức API miễn phí hôm nay. Vui lòng thử lại vào ngày mai hoặc nâng cấp API key."
+                    )
+                else:
+                    # Rate limit tạm thời (per-minute) → chờ ngắn rồi retry
+                    wait_time = 15 * (attempt + 1)  # 15s, 30s, 45s
+                    logger.warning(
+                        f"OCR rate limit (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        raise OCRQuotaExceeded("Vượt giới hạn request/phút. Vui lòng thử lại sau vài phút.")
+
+            elif "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                wait_time = 2 ** attempt  # 1s, 2s, 4s
+                logger.warning(
+                    f"OCR service unavailable (attempt {attempt + 1}/{max_retries}). "
+                    f"Retrying in {wait_time}s..."
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    raise OCRServiceUnavailable(
+                        f"Gemini API quá tải sau {max_retries} lần thử. Vui lòng thử lại sau."
+                    )
+
+            else:
+                logger.error(f"OCR error (non-retryable): {type(e).__name__}: {error_str[:200]}")
+                raise
+
+    raise last_error
+
 # ─── Main function ────────────────────────────────────────────────────────────
 
 async def extract_questions(image_bytes: bytes) -> list[dict]:
+    """
+    Trích xuất câu hỏi từ ảnh sử dụng Gemini API với retry logic
+    
+    Args:
+        image_bytes: Ảnh dưới dạng bytes
+    
+    Returns:
+        List các câu hỏi dạng dict
+    
+    Raises:
+        OCRServiceUnavailable: Khi Gemini quá tải
+        OCRQuotaExceeded: Khi vượt quota
+        ValueError: Khi parse JSON thất bại
+        Exception: Các lỗi khác
+    """
     try:
-        response = await client.aio.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'),
-                        types.Part.from_text(text=OCR_PROMPT)
-                    ]
-                )
-            ],
-            config=types.GenerateContentConfig(
-                max_output_tokens=4000,
-                response_mime_type="application/json",
-                temperature=0.1,
-                # Ép AI trả về đúng cấu trúc Pydantic đã định nghĩa
-                response_schema=list[Question], 
-            )
-        )
-
-        # Do dùng response_schema, raw text trả về chắc chắn là JSON mảng hợp lệ
-        raw = response.text
+        # Gọi Gemini với retry logic
+        raw = await call_gemini_with_retry(image_bytes, max_retries=3)
+        
+        # Parse JSON
         questions = json.loads(raw)
+        
+        if not questions:
+            logger.warning("OCR returned empty questions list")
+            return []
 
-        # Chuẩn hóa từng câu hỏi để đảm bảo format LaTeX/Markdown đẹp nhất
+        # Chuẩn hóa từng câu hỏi
         for q in questions:
             if isinstance(q.get('content'), str):
                 q['content'] = normalize_content(q['content'])
 
+        logger.info(f"Successfully extracted {len(questions)} questions")
         return questions
 
     except json.JSONDecodeError as e:
-        logger.error(f"OCR JSON parse error: {e}\nRaw: {response.text[:500]}")
+        logger.error(f"OCR JSON parse error: {e}\nRaw: {raw[:500] if 'raw' in locals() else 'N/A'}")
         raise ValueError(f"AI trả về định dạng không hợp lệ: {e}")
+    
+    except (OCRServiceUnavailable, OCRQuotaExceeded):
+        # Re-raise custom exceptions
+        raise
+    
     except Exception as e:
-        logger.error(f"OCR error: {e}")
+        logger.error(f"OCR unexpected error: {type(e).__name__}: {e}")
         raise
