@@ -128,6 +128,9 @@ async def call_gemini_with_retry(image_bytes: bytes, max_retries: int = 3) -> st
                 )
             )
 
+            if not response.text:
+                raise ValueError("Model trả về kết quả rỗng (có thể do lỗi nội dung hoặc kiểm duyệt)")
+
             logger.info(f"OCR success on attempt {attempt + 1}")
             return response.text
 
