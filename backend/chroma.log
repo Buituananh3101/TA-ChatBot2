@@ -1,0 +1,49 @@
+[33mWARNING[0m:  [09-04-2026 19:31:41] chroma_server_nofile is not supported on Windows. chroma_server_nofile will not be set.
+[32mINFO[0m:     [09-04-2026 19:31:41] Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component System
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component OpenTelemetryClient
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component SimpleAssignmentPolicy
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component SqliteDB
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component Posthog
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component LocalSegmentManager
+[36mDEBUG[0m:    [09-04-2026 19:31:41] Starting component SegmentAPI
+[32mINFO[0m:     [09-04-2026 19:31:41] Started server process [[36m26304[0m]
+[32mINFO[0m:     [09-04-2026 19:31:41] Waiting for application startup.
+[32mINFO[0m:     [09-04-2026 19:31:41] Application startup complete.
+[31mERROR[0m:    [09-04-2026 19:31:41] [Errno 10048] error while attempting to bind on address ('::1', 8001, 0, 0): only one usage of each socket address (protocol/network address/port) is normally permitted
+[32mINFO[0m:     [09-04-2026 19:31:41] Waiting for application shutdown.
+[32mINFO[0m:     [09-04-2026 19:31:41] Application shutdown complete.
+[33mWARNING[0m:  [09-04-2026 19:35:58] chroma_server_nofile is not supported on Windows. chroma_server_nofile will not be set.
+[32mINFO[0m:     [09-04-2026 19:35:58] Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component System
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component OpenTelemetryClient
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component SimpleAssignmentPolicy
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component SqliteDB
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component Posthog
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component LocalSegmentManager
+[36mDEBUG[0m:    [09-04-2026 19:35:58] Starting component SegmentAPI
+[32mINFO[0m:     [09-04-2026 19:35:58] Started server process [[36m20800[0m]
+[32mINFO[0m:     [09-04-2026 19:35:58] Waiting for application startup.
+[32mINFO[0m:     [09-04-2026 19:35:58] Application startup complete.
+[32mINFO[0m:     [09-04-2026 19:35:58] Uvicorn running on [1mhttp://localhost:8001[0m (Press CTRL+C to quit)
+[33mWARNING[0m:  [09-04-2026 19:39:11] chroma_server_nofile is not supported on Windows. chroma_server_nofile will not be set.
+[32mINFO[0m:     [09-04-2026 19:39:12] Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component System
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component OpenTelemetryClient
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component SimpleAssignmentPolicy
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component SqliteDB
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component Posthog
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component LocalSegmentManager
+[36mDEBUG[0m:    [09-04-2026 19:39:12] Starting component SegmentAPI
+[32mINFO[0m:     [09-04-2026 19:39:12] Started server process [[36m21364[0m]
+[32mINFO[0m:     [09-04-2026 19:39:12] Waiting for application startup.
+[32mINFO[0m:     [09-04-2026 19:39:12] Application startup complete.
+[32mINFO[0m:     [09-04-2026 19:39:12] Uvicorn running on [1mhttp://localhost:8001[0m (Press CTRL+C to quit)
+[32mINFO[0m:     [09-04-2026 19:40:34] ::1:59549 - "GET /api/v1/tenants/default_tenant HTTP/1.1" 200
+[32mINFO[0m:     [09-04-2026 19:40:34] ::1:59549 - "GET /api/v1/databases/default_database?tenant=default_tenant HTTP/1.1" 200
+[31mERROR[0m:    [09-04-2026 19:40:34] Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+[32mINFO[0m:     [09-04-2026 19:40:34] ::1:59549 - "POST /api/v1/collections?tenant=default_tenant&database=default_database HTTP/1.1" 200
+[32mINFO[0m:     [09-04-2026 19:49:12] ::1:55672 - "GET /api/v1/tenants/default_tenant HTTP/1.1" 200
+[32mINFO[0m:     [09-04-2026 19:49:12] ::1:55672 - "GET /api/v1/databases/default_database?tenant=default_tenant HTTP/1.1" 200
+[31mERROR[0m:    [09-04-2026 19:49:12] Failed to send telemetry event ClientCreateCollectionEvent: capture() takes 1 positional argument but 3 were given
+[32mINFO[0m:     [09-04-2026 19:49:12] ::1:55672 - "POST /api/v1/collections?tenant=default_tenant&database=default_database HTTP/1.1" 200

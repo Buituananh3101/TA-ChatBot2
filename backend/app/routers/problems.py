@@ -11,9 +11,10 @@ router = APIRouter(tags=["Problems"])
 
 @router.get("/exams", response_model=list[SourceExamOut])
 def list_exams(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # FIX: dùng created_at thay vì uploaded_at (không tồn tại trên model)
     return (db.query(SourceExam)
               .filter(SourceExam.user_id == user.id)
-              .order_by(SourceExam.uploaded_at.desc())
+              .order_by(SourceExam.created_at.desc())
               .all())
 
 @router.get("/exams/{exam_id}", response_model=SourceExamOut)
@@ -37,21 +38,17 @@ def delete_exam(exam_id: int, db: Session = Depends(get_db), user: User = Depend
     if not exam:
         raise HTTPException(status_code=404, detail="Không tìm thấy đề")
 
-    # Liệt kê danh sách ID câu hỏi
     question_ids = [q.id for q in exam.questions]
     
-    # 1. Xoá liên kết Many-to-Many với các đề ôn tập để tránh lỗi Foreign Key Constraint
     if question_ids:
         db.execute(review_exam_questions.delete().where(review_exam_questions.c.question_id.in_(question_ids)))
 
-    # 2. Xoá khỏi ChromaDB
     for qid in question_ids:
         try:
             delete_question(qid)
         except Exception:
-            pass  # Bỏ qua nếu câu hỏi không tồn tại trong Chroma
+            pass
 
-    # 3. Xoá exam khỏi DB (cascade sẽ tự xoá các Question con)
     db.delete(exam)
     db.commit()
     return {"message": "Đã xoá thành công"}
@@ -80,12 +77,9 @@ def update_question(question_id: int, data: QuestionUpdate, db: Session = Depend
     db.commit()
     db.refresh(question)
     
-    # Cập nhật ChromaDB
     try:
         update_question_metadata(question)
     except Exception as e:
-        # Log error if needed, but don't fail the request
         print(f"Error updating chromadb for question {question.id}: {e}")
         
     return question
-

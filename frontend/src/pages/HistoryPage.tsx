@@ -4,6 +4,8 @@ import { ImageUpload } from '../components/ImageUpload/ImageUpload'
 import type { SourceExam, Question } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
 import { AddToSetModal } from '../components/Library/AddToSetModal'
+import { useStudyTracker } from '../hooks/useStudyTracker'
+
 
 // Base URL của API backend để cấu tạo URL ảnh tửủ đường dẫn tương đối
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -16,6 +18,7 @@ const DIFFICULTIES = [
 ]
 
 export function HistoryPage() {
+  useStudyTracker('history')  
   const [exams, setExams] = useState<SourceExam[]>([])
   const [selected, setSelected] = useState<SourceExam | null>(null)
   const [loading, setLoading] = useState(true)

@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 
+
 class QuestionOut(BaseModel):
     id: int
     content: str
@@ -13,9 +14,14 @@ class QuestionOut(BaseModel):
     last_used_at: Optional[datetime] = None
     review_count: int = 0
     source_exam_id: int
+    # Spaced repetition
+    next_review_at: Optional[datetime] = None
+    interval_days: int = 1
+    ease_factor: float = 2.5
 
     class Config:
         from_attributes = True
+
 
 class SourceExamOut(BaseModel):
     id: int
@@ -27,9 +33,11 @@ class SourceExamOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ReviewRequest(BaseModel):
     topics: List[str]
     num_questions: int = 10
+
 
 class ReviewExamOut(BaseModel):
     id: int
@@ -40,9 +48,16 @@ class ReviewExamOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class SourceExamUpdate(BaseModel):
     title: str
+
 
 class QuestionUpdate(BaseModel):
     topic: str
     difficulty: str
+
+
+class MarkReviewedRequest(BaseModel):
+    """Body cho POST /questions/{id}/mark-reviewed"""
+    quality: int = 3   # 0–5, mặc định 3 (nhớ được)

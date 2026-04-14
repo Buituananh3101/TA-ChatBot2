@@ -2,6 +2,7 @@ import chromadb
 from app.config import settings
 
 client = chromadb.HttpClient(host=settings.CHROMA_HOST, port=settings.CHROMA_PORT)
+#client = chromadb.Client()
 
 # Collection lưu toàn bộ câu hỏi dưới dạng vector
 questions_collection = client.get_or_create_collection(

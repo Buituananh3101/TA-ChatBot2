@@ -3,6 +3,8 @@ import { reviewAPI } from '../services/api'
 import { ReviewExamGenerator } from '../components/ReviewExam/ReviewExam'
 import type { ReviewExam } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
+import { useStudyTracker } from '../hooks/useStudyTracker'
+
 
 const DIFFICULTY_LABEL: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' }
 const DIFFICULTY_COLOR: Record<string, string> = {
@@ -13,6 +15,7 @@ const DIFFICULTY_COLOR: Record<string, string> = {
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 export function ReviewPage() {
+  useStudyTracker('review')  
   const [tab, setTab] = useState<'generate' | 'history' | 'needsReview'>('generate')
   const [history, setHistory] = useState<ReviewExam[]>([])
   const [selected, setSelected] = useState<ReviewExam | null>(null)
