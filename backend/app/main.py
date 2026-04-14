@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.database import engine, Base
 from app import models  # noqa: F401 — import để Base nhận diện tất cả models
-from app.routers import auth, chat, upload, problems, review, library, stats
+from app.routers import auth, chat, upload, problems, review, library, stats, n8n_webhook
 
 Base.metadata.create_all(bind=engine)
 
@@ -34,13 +34,14 @@ async def catch_exceptions_middleware(request: Request, call_next):
         logging.error(f"Dòng lỗi cực kỳ quan trọng ở đây: {e}")
         raise e
 
-app.include_router(auth.router,     prefix="/api/auth")
-app.include_router(chat.router,     prefix="/api/chat")
-app.include_router(upload.router,   prefix="/api/upload")   # chỉ 1 lần
-app.include_router(problems.router, prefix="/api/problems")
-app.include_router(review.router,   prefix="/api/review")
-app.include_router(library.router,  prefix="/api/library")
-app.include_router(stats.router,    prefix="/api/stats")    # FIX: thêm prefix
+app.include_router(auth.router,       prefix="/api/auth")
+app.include_router(chat.router,       prefix="/api/chat")
+app.include_router(upload.router,     prefix="/api/upload")
+app.include_router(problems.router,   prefix="/api/problems")
+app.include_router(review.router,     prefix="/api/review")
+app.include_router(library.router,    prefix="/api/library")
+app.include_router(stats.router,      prefix="/api/stats")
+app.include_router(n8n_webhook.router, prefix="/api/n8n")
 
 @app.get("/")
 def root():
