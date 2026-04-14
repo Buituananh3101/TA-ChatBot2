@@ -183,7 +183,7 @@ export function DocumentsPage() {
       setSets(prev => prev.map(s => s.id === selectedSet.id
         ? {
           ...s, questions: s.questions.map(q =>
-            q.id === questionId ? { ...q, last_used_at: res.data.last_last_used_at, review_count: res.data.review_count } : q
+            q.id === questionId ? { ...q, last_used_at: res.data.last_used_at, review_count: res.data.review_count } : q
           )
         }
         : s
