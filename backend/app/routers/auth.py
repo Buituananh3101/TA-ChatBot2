@@ -38,3 +38,30 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+# ── Messenger Integration (JWT) ──────────────────────────────────────────────
+
+@router.get("/messenger-status")
+def get_messenger_status(
+    current_user: User = Depends(get_current_user),
+):
+    """Kiểm tra trạng thái liên kết Messenger của user hiện tại."""
+    return {
+        "linked": current_user.messenger_psid is not None,
+        "psid": current_user.messenger_psid,
+    }
+
+
+@router.post("/unlink-messenger")
+def unlink_messenger(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Hủy liên kết Messenger cho user hiện tại (gọi từ frontend)."""
+    if not current_user.messenger_psid:
+        return {"message": "Tài khoản chưa liên kết Messenger", "linked": False}
+
+    current_user.messenger_psid = None
+    db.commit()
+    return {"message": "Đã hủy liên kết Messenger", "linked": False}

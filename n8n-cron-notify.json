@@ -29,7 +29,7 @@
           "parameters": [
             {
               "name": "secret",
-              "value": "my-super-secret-n8n-key-2024"
+              "value": "={{ $env.N8N_SECRET || 'change-this-n8n-secret' }}"
             }
           ]
         },
@@ -50,7 +50,7 @@
         "options": {}
       },
       "id": "04ec67eb-a6b1-4bb2-b5e0-51c8901eb4fc",
-      "name": "Item Lists",
+      "name": "Split Users",
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
@@ -81,37 +81,21 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://graph.facebook.com/v19.0/me/messages",
+        "url": "=https://graph.facebook.com/v19.0/{{ $env.FB_PAGE_ID || 'YOUR_PAGE_ID' }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "access_token",
-              "value": "PASTE_YOUR_PAGE_ACCESS_TOKEN_HERE"
+              "value": "={{ $env.FB_PAGE_ACCESS_TOKEN || 'PASTE_YOUR_PAGE_ACCESS_TOKEN_HERE' }}"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "recipient.id",
-              "value": "={{ $json.psid }}"
-            },
-            {
-              "name": "message.text",
-              "value": "=Xin chào {{ $json.name }}! 🔔\n\nHôm nay bạn có {{ $json.due_today }} câu hỏi toán cần ôn tập.\nBạn cũng có {{ $json.due_next_7_days }} câu sắp đến hạn trong tuần này.\n\nNhắn \"gửi {{Math.min($json.due_today, 5)}} bài\" để bắt đầu luyện tập nha 💪"
-            },
-            {
-              "name": "messaging_type",
-              "value": "MESSAGE_TAG"
-            },
-            {
-               "name": "tag",
-               "value": "ACCOUNT_UPDATE"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"recipient\": { \"id\": \"{{ $json.psid }}\" },\n  \"message\": {\n    \"text\": \"Xin chào {{ $json.name }}! 🔔\\n\\nHôm nay bạn có {{ $json.due_today }} câu hỏi toán cần ôn tập.\\nBạn cũng có {{ $json.due_next_7_days }} câu sắp đến hạn trong tuần này.\\n\\nNhắn \\\"gửi {{ Math.min($json.due_today, 5) }} bài\\\" để bắt đầu luyện tập nha 💪\"\n  },\n  \"messaging_type\": \"UPDATE\"\n}",
         "options": {}
       },
       "id": "875b22b1-12c8-4720-bfcc-7ed2f205373a",
@@ -121,6 +105,17 @@
       "position": [
         1100,
         260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "No Notification Needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        420
       ]
     }
   ],
@@ -141,14 +136,14 @@
       "main": [
         [
           {
-            "node": "Item Lists",
+            "node": "Split Users",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Item Lists": {
+    "Split Users": {
       "main": [
         [
           {
@@ -164,6 +159,13 @@
         [
           {
             "node": "Send Messenger",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Notification Needed",
             "type": "main",
             "index": 0
           }

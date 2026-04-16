@@ -6,6 +6,7 @@ import { HistoryPage } from './pages/HistoryPage'
 import { ReviewPage } from './pages/ReviewPage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { StatsPage } from './pages/Statspage'
+import { SettingsPage } from './pages/SettingsPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token')
@@ -29,6 +30,7 @@ function Navbar() {
       <NavLink to="/documents" style={navStyle}>Tài liệu</NavLink>
       <NavLink to="/review"    style={navStyle}>Ôn tập</NavLink>
       <NavLink to="/stats" style={navStyle}>📊 Thống kê</NavLink>
+      <NavLink to="/settings" style={navStyle}>⚙️ Cài đặt</NavLink>
       <div style={{ flex: 1 }} />
       <button onClick={logout} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.4)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
         Đăng xuất
@@ -52,6 +54,7 @@ export default function App() {
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/review"    element={<ReviewPage />} />
               <Route path="/stats" element={<StatsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*"          element={<Navigate to="/chat" replace />} />
             </Routes>
           </RequireAuth>

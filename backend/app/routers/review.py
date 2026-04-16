@@ -10,6 +10,7 @@ from app.services.review_service import generate_review_exam, calculate_next_rev
 from app.models.problem import Question
 from app.schemas.problem import QuestionOut
 from app.config import settings
+from app.routers.n8n_webhook import _build_due_filter, _count_due_today, _count_due_week
 from datetime import datetime, timedelta
 
 router = APIRouter(tags=["Review"])
@@ -29,24 +30,15 @@ def get_needs_review(
     days=0 → tất cả câu đến hạn hôm nay hoặc quá hạn.
     """
     from app.models.library import question_set_items
-    now = datetime.utcnow()
-    cutoff = now - timedelta(days=days)
 
-    questions = (
+    query = (
         db.query(Question)
         .join(question_set_items, Question.id == question_set_items.c.question_id)
-        .filter(
-            Question.user_id == user.id,
-            # Ưu tiên next_review_at; nếu chưa có thì dùng last_used_at logic cũ
-            (
-                (Question.next_review_at == None) & (
-                    (Question.last_used_at == None) | (Question.last_used_at <= cutoff)
-                )
-            ) | (Question.next_review_at <= now),
-        )
-        .order_by(Question.next_review_at.asc(), Question.last_used_at.asc())
-        .all()
     )
+    query = _build_due_filter(query, user.id, days)
+    questions = query.order_by(
+        Question.next_review_at.asc(), Question.last_used_at.asc()
+    ).all()
     return questions
 
 
@@ -167,41 +159,12 @@ def due_summary_for_notification(
     if secret != getattr(settings, "NOTIFICATION_SECRET", None):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    from app.models.library import question_set_items
-
-    now = datetime.utcnow()
-    yesterday = now - timedelta(days=1)
-
-    # Due hôm nay (next_review_at <= now hoặc chưa từng ôn)
-    due_today = (
-        db.query(func.count(Question.id))
-        .join(question_set_items, Question.id == question_set_items.c.question_id)
-        .filter(
-            Question.user_id == user_id,
-            (
-                (Question.next_review_at == None) & (
-                    (Question.last_used_at == None) | (Question.last_used_at <= yesterday)
-                )
-            ) | (Question.next_review_at <= now),
-        )
-        .scalar() or 0
-    )
-
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User không tồn tại")
 
-    # Câu sắp đến hạn trong 7 ngày tới
-    due_week = (
-        db.query(func.count(Question.id))
-        .join(question_set_items, Question.id == question_set_items.c.question_id)
-        .filter(
-            Question.user_id == user_id,
-            Question.next_review_at > now,
-            Question.next_review_at <= now + timedelta(days=7),
-        )
-        .scalar() or 0
-    )
+    due_today = _count_due_today(db, user_id)
+    due_week = _count_due_week(db, user_id)
 
     return {
         "user_id": user_id,

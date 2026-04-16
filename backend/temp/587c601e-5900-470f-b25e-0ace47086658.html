@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Questions</title>
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 15px;
+            color: #1a1a1a;
+            background: #fff;
+            margin: 0;
+            padding: 40px;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #1a56a0;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #1a56a0;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+
+        .header p {
+            color: #666;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .question-card {
+            background: #f8f9fb;
+            border: 1px solid #e8ecf1;
+            border-left: 4px solid #1a56a0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8ecf1;
+        }
+
+        .question-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: #1a56a0;
+        }
+
+        .question-meta {
+            font-size: 13px;
+            color: #888;
+        }
+        
+        .tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .math-content {
+            word-break: break-word;
+            overflow-wrap: break-word;
+            margin-bottom: 15px;
+        }
+
+        .math-content p {
+            margin: 0 0 0.5em;
+        }
+
+        .math-content .katex-display {
+            margin: 1em 0;
+            text-align: center;
+        }
+
+        .question-image {
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            margin-top: 15px;
+            display: block;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #999;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📑 Danh sách câu hỏi ôn tập</h1>
+        <p>Hệ thống tự động biên soạn bởi <b>Math Chatbot</b></p>
+        <p>Gửi tới tài khoản: <b>abc123</b></p>
+    </div>
+
+    
+    <div class="question-card">
+        <div class="question-header">
+            <span class="question-title">Câu 1</span>
+            <div class="question-meta">
+                <span class="tag">Giải tích</span>
+                &nbsp; • &nbsp; Đã ôn 0 lần
+            </div>
+        </div>
+        
+        <!-- Markdown content rendered to HTML -> we'll use Jinja to output raw and let JS render it, or we pre-render markdown -->
+        <div class="math-content" id="content-1">
+            <!-- Note: We use PRE to preserve newlines initially, then script will replace it -->
+            <div style="white-space: pre-wrap;">Nếu $\int_{-1}^{2} f(x)dx = 4$ thì $\int_{-1}^{2} (3 - f(x))dx$ bằng
+
+A. 7.
+
+B. 13.
+
+C. 5.
+
+D. -1.</div>
+        </div>
+
+        
+    </div>
+    
+    <div class="question-card">
+        <div class="question-header">
+            <span class="question-title">Câu 2</span>
+            <div class="question-meta">
+                <span class="tag">Hình học</span>
+                &nbsp; • &nbsp; Đã ôn 0 lần
+            </div>
+        </div>
+        
+        <!-- Markdown content rendered to HTML -> we'll use Jinja to output raw and let JS render it, or we pre-render markdown -->
+        <div class="math-content" id="content-2">
+            <!-- Note: We use PRE to preserve newlines initially, then script will replace it -->
+            <div style="white-space: pre-wrap;">Trong không gian $Oxyz$, mặt cầu có tâm $I(4; 0; 0)$ và đi qua điểm $M(0; -3; 0)$ có phương trình là
+
+A. $(x - 4)^2 + y^2 + z^2 = 5$.
+
+B. $(x + 4)^2 + y^2 + z^2 = 5$.
+
+C. $(x + 4)^2 + y^2 + z^2 = 25$.
+
+D. $(x - 4)^2 + y^2 + z^2 = 25$.</div>
+        </div>
+
+        
+    </div>
+    
+    <div class="question-card">
+        <div class="question-header">
+            <span class="question-title">Câu 3</span>
+            <div class="question-meta">
+                <span class="tag">Giải tích</span>
+                &nbsp; • &nbsp; Đã ôn 0 lần
+            </div>
+        </div>
+        
+        <!-- Markdown content rendered to HTML -> we'll use Jinja to output raw and let JS render it, or we pre-render markdown -->
+        <div class="math-content" id="content-3">
+            <!-- Note: We use PRE to preserve newlines initially, then script will replace it -->
+            <div style="white-space: pre-wrap;">Có bao nhiêu giá trị nguyên của tham số $m$ thuộc đoạn $[1; 20]$ sao cho ứng với mỗi $m$, hàm số $y = \frac{-x^2 + 3x - m - 1}{3x - m}$ đồng biến trên khoảng $(2; 3)$?
+
+A. 17.
+
+B. 14.
+
+C. 15.
+
+D. 13.</div>
+        </div>
+
+        
+    </div>
+    
+
+    <div class="footer">
+        <p>Mở ứng dụng web để đánh dấu đã ôn tập các câu hỏi này nhé!</p>
+        <p>Cảm ơn bạn đã đồng hành cùng Math Chatbot.</p>
+    </div>
+
+    <!-- KaTeX Scripts for Auto-rendering -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"
+        onload="renderMath()"></script>
+    
+    <script>
+        function renderMath() {
+            // Dùng auto-render của KaTeX để biến đổi tất cả $...$ hoặc $$...$$ trong trang
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });
+            
+            // Xóa white-space: pre-wrap sau khi render nếu muốn layout đẹp hơn (Tuỳ chọn)
+            // Đánh dấu cho Playwright biết trang đã render xong
+            const div = document.createElement('div');
+            div.id = 'math-rendered';
+            document.body.appendChild(div);
+        }
+    </script>
+</body>
+</html>

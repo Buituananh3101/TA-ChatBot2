@@ -90,4 +90,10 @@ export const libraryAPI = {
   removeQuestion: (setId: number, questionId: number) => api.delete(`/library/sets/${setId}/questions/${questionId}`),
 }
 
+// ── Messenger Integration ─────────────────────────────
+export const messengerAPI = {
+  getStatus: () => api.get('/auth/messenger-status'),
+  unlink: () => api.post('/auth/unlink-messenger'),
+}
+
 export default api

@@ -39,6 +39,26 @@ services:
     depends_on:
       - mysql
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: mathbot_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      - TZ=Asia/Ho_Chi_Minh
+      # Backend sẽ chạy ở host machine, n8n dùng host.docker.internal để gọi
+      # Nếu backend cũng chạy trong Docker, đổi thành tên container
+      - WEBHOOK_URL=http://localhost:5678
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - mysql
+
 volumes:
   mysql_data:
   chroma_data:
+  n8n_data:

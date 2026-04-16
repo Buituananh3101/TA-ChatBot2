@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Sơ đồ luồng hệ thống Math Chatbot</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #1a1a2e;
+            background: #fff;
+            padding: 40px 50px;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .cover {
+            text-align: center;
+            padding: 80px 0 60px;
+            border-bottom: 3px solid #1a56a0;
+            margin-bottom: 40px;
+            page-break-after: always;
+        }
+        .cover h1 {
+            font-size: 32px;
+            color: #1a56a0;
+            margin-bottom: 12px;
+        }
+        .cover .subtitle {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+        .cover .meta {
+            font-size: 14px;
+            color: #888;
+        }
+
+        h2 {
+            color: #1a56a0;
+            font-size: 22px;
+            margin: 40px 0 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e3f2fd;
+            page-break-before: always;
+        }
+        h2:first-of-type { page-break-before: avoid; }
+
+        h3 {
+            color: #333;
+            font-size: 16px;
+            margin: 25px 0 10px;
+        }
+
+        p, li {
+            color: #444;
+            margin-bottom: 6px;
+        }
+
+        blockquote {
+            background: #f0f7ff;
+            border-left: 4px solid #1a56a0;
+            padding: 10px 16px;
+            margin: 12px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .diagram-container {
+            background: #fafbfc;
+            border: 1px solid #e8ecf1;
+            border-radius: 10px;
+            padding: 24px;
+            margin: 16px 0 30px;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 24px;
+            font-size: 13px;
+        }
+        th {
+            background: #1a56a0;
+            color: #fff;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 8px 14px;
+            border-bottom: 1px solid #e8ecf1;
+        }
+        tr:nth-child(even) td { background: #f8f9fb; }
+
+        .section-desc {
+            background: #f8f9fb;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 10px 0 16px;
+            border: 1px solid #e8ecf1;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 30px 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+    <h1>📊 Sơ đồ luồng hệ thống</h1>
+    <div class="subtitle">Math Chatbot — Ứng dụng ôn tập toán cấp 3</div>
+    <div class="meta">
+        <p>Tech Stack: React + FastAPI + MySQL + ChromaDB + Gemini AI</p>
+        <p>Ngày tạo: <span id="gen-date"></span></p>
+    </div>
+</div>
+
+<!-- 1. KIẾN TRÚC TỔNG QUAN -->
+<h2>1. Kiến trúc tổng quan hệ thống</h2>
+<div class="diagram-container">
+    <div class="mermaid">
+graph TB
+    subgraph Frontend["🖥️ Frontend — React + Vite"]
+        UI_Upload["📸 Upload"]
+        UI_Chat["💬 Chat"]
+        UI_Library["📚 Library"]
+        UI_Review["📝 Review"]
+        UI_Stats["📊 Stats"]
+    end
+    subgraph Backend["⚙️ Backend — FastAPI"]
+        Auth["🔐 Auth"]
+        Upload["📤 Upload"]
+        Chat["💬 Chat"]
+        Library["📁 Library"]
+        Review["📝 Review"]
+        Stats["📊 Stats"]
+        N8N["🔔 Webhook"]
+    end
+    subgraph Services["🛠️ Services"]
+        OCR["🔍 OCR"]
+        LLM["🤖 LLM"]
+        Embed["🧠 Embed"]
+        ReviewSvc["📐 Review"]
+        PDF["📄 PDF"]
+    end
+    subgraph External["☁️ External APIs"]
+        Gemini["Gemini 2.5 Flash"]
+        FB["Facebook Graph API"]
+        N8N_Engine["n8n Automation"]
+    end
+    subgraph Storage["💾 Storage"]
+        MySQL["MySQL"]
+        Chroma["ChromaDB"]
+        Static["Static Files"]
+    end
+    Frontend -->|JWT| Backend
+    Upload --> OCR --> Gemini
+    Upload --> Embed --> Chroma
+    Chat --> LLM --> Gemini
+    Review --> ReviewSvc
+    N8N --> PDF
+    N8N --> FB
+    N8N_Engine -->|Cron| N8N
+    Backend --> MySQL
+    Upload --> Static
+    </div>
+</div>
+
+<!-- 2. LUỒNG OCR -->
+<h2>2. Luồng OCR — Upload ảnh đề thi</h2>
+<blockquote>
+    <strong>Endpoint:</strong> POST /api/upload/exam-image<br>
+    <strong>Files:</strong> upload.py, ocr_service.py, embed_service.py
+</blockquote>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["👤 User chụp ảnh đề toán"] --> B["📤 Upload ảnh qua Frontend"]
+    B --> C{"🔍 Validate file\nMIME + Size ≤ 10MB"}
+    C -->|"❌ Lỗi"| D["⚠️ HTTP 400"]
+    C -->|"✅ OK"| E["📷 Đọc image_bytes"]
+    E --> F["🤖 Gọi Gemini OCR\ncall_gemini_with_retry"]
+    F --> G{"Kết quả?"}
+    G -->|"429 PerDay"| H["❌ Hết quota ngày"]
+    G -->|"429 Rate"| I["⏳ Retry 15s/30s/45s"]
+    I --> F
+    G -->|"503"| J["⏳ Retry 1s/2s/4s"]
+    J --> F
+    G -->|"✅ JSON"| K["📝 Parse → list questions"]
+    K --> L{"Có câu hỏi?"}
+    L -->|"❌"| M["⚠️ HTTP 422"]
+    L -->|"✅"| N["🔄 normalize_content\nChuẩn hóa LaTeX"]
+    N --> O["💾 Lưu ảnh → /static/exams/"]
+    O --> P["💾 Tạo SourceExam → MySQL"]
+    P --> Q["🔁 Loop từng câu"]
+    Q --> R["💾 Tạo Question → MySQL"]
+    R --> S["🧠 Embed → ChromaDB"]
+    S --> T{"Còn câu?"}
+    T -->|"Có"| Q
+    T -->|"Hết"| U["✅ Commit DB"]
+    </div>
+</div>
+
+<table>
+    <tr><th>Bước</th><th>Component</th><th>Mô tả</th></tr>
+    <tr><td>Validate</td><td>upload.py</td><td>Kiểm tra MIME type (JPEG/PNG/WEBP/HEIC), kích thước ≤ 10MB</td></tr>
+    <tr><td>OCR</td><td>ocr_service.py</td><td>Gemini 2.5 Flash + Structured Output (JSON schema)</td></tr>
+    <tr><td>Retry</td><td>call_gemini_with_retry()</td><td>429 per-minute → wait 15s; 503 → exponential backoff</td></tr>
+    <tr><td>Normalize</td><td>normalize_content()</td><td>\[...\] → $$...$$, \(...\) → $...$, ép xuống dòng đáp án</td></tr>
+    <tr><td>Embed</td><td>embed_service.py</td><td>ChromaDB lưu vector content + metadata (topic, difficulty)</td></tr>
+</table>
+
+<!-- 3. LUỒNG CHAT -->
+<h2>3. Luồng Chat AI — Hỏi bài gia sư</h2>
+<blockquote>
+    <strong>Endpoints:</strong> POST /api/chat/sessions, POST /api/chat/sessions/{id}/messages<br>
+    <strong>Files:</strong> chat.py, llm_service.py
+</blockquote>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["👤 User mở Chat"] --> B["📱 Tạo/chọn Session"]
+    B --> C["💬 Nhập câu hỏi"]
+    C --> D["📨 POST /sessions/id/messages"]
+    D --> E["💾 Lưu user msg → MySQL"]
+    E --> F["📜 Load 20 tin nhắn gần nhất"]
+    F --> G["🤖 Gemini 2.5 Flash\nSystem: Gia sư toán cấp 3\nTemp: 0.3, Max: 2000 tokens"]
+    G --> H{"Kết quả?"}
+    H -->|"429 PerDay"| I["'Hết hạn mức hôm nay'"]
+    H -->|"429 Rate"| J["'AI đang quá tải'"]
+    H -->|"503"| K["'Tạm không khả dụng'"]
+    H -->|"✅"| L["📝 Reply text"]
+    I --> M["💾 Lưu bot msg → MySQL"]
+    J --> M
+    K --> M
+    L --> M
+    M --> N["📱 Render KaTeX + Markdown"]
+    </div>
+</div>
+
+<!-- 4. LUỒNG ÔN TẬP -->
+<h2>4. Luồng Ôn tập — Spaced Repetition SM-2</h2>
+<blockquote>
+    <strong>Endpoints:</strong> GET /api/review/needs-review, POST /api/review/questions/{id}/mark-reviewed<br>
+    <strong>Files:</strong> review.py, review_service.py
+</blockquote>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["👤 Mở Review Page"] --> B["📋 GET /needs-review"]
+    B --> C{"Filter"}
+    C -->|"next_review_at ≤ now"| D["Câu đã đến hạn"]
+    C -->|"NULL & last_used > 1d"| E["Câu chưa ôn / quá hạn"]
+    D --> F["📝 Hiển thị danh sách"]
+    E --> F
+    F --> G["👤 Ôn bài + chấm điểm"]
+    G --> H["POST /mark-reviewed\nquality: 0-5"]
+    H --> I["🔄 review_count += 1\nlast_used_at = now"]
+    I --> J["📐 Tính SM-2"]
+    J --> K{"quality < 3?"}
+    K -->|"Quên"| L["interval = 1 ngày"]
+    K -->|"Nhớ"| M{"review_count?"}
+    M -->|"≤ 1"| N["interval = 1"]
+    M -->|"= 2"| O["interval = 6"]
+    M -->|"> 2"| P["interval × ease_factor"]
+    L --> Q["ease_factor mới\nnext_review_at = now + interval"]
+    N --> Q
+    O --> Q
+    P --> Q
+    </div>
+</div>
+
+<table>
+    <tr><th>Quality</th><th>Ý nghĩa</th><th>Hành động</th></tr>
+    <tr><td>0</td><td>Quên hoàn toàn</td><td>Reset interval → 1 ngày</td></tr>
+    <tr><td>1</td><td>Nhớ rất khó</td><td>Reset interval → 1 ngày</td></tr>
+    <tr><td>2</td><td>Nhớ khó khăn</td><td>Reset interval → 1 ngày</td></tr>
+    <tr><td>3</td><td>Nhớ được (mặc định)</td><td>Tăng interval bình thường</td></tr>
+    <tr><td>4</td><td>Nhớ dễ dàng</td><td>Tăng interval bình thường</td></tr>
+    <tr><td>5</td><td>Rất dễ, nhớ ngay</td><td>Tăng interval bình thường</td></tr>
+</table>
+
+<!-- 5. LUỒNG MESSENGER -->
+<h2>5. Luồng Thông báo Messenger</h2>
+<blockquote>
+    <strong>Endpoints:</strong> POST /api/n8n/webhook, GET /api/n8n/users-due<br>
+    <strong>Files:</strong> n8n_webhook.py, pdf_service.py
+</blockquote>
+
+<h3>5a. Nhận và xử lý tin nhắn</h3>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["👤 Gửi tin nhắn\nqua Messenger"] --> B["📨 Facebook → POST /webhook"]
+    B --> C{"🔐 Verify\nX-Hub-Signature-256"}
+    C -->|"❌"| D["HTTP 403"]
+    C -->|"✅"| E["📝 Parse PSID + text"]
+    E --> F{"User đã\nliên kết?"}
+    F -->|"❌"| G{"Có email?"}
+    G -->|"Có"| H["🔗 Liên kết PSID"]
+    G -->|"Không"| I["'Gõ email để liên kết'"]
+    F -->|"✅"| J["🧠 _parse_intent"]
+    J --> K{"Intent?"}
+    K -->|"help"| L["📋 Menu hướng dẫn"]
+    K -->|"get_stats"| M["📊 Thống kê"]
+    K -->|"get_questions"| N["📄 Gửi PDF"]
+    K -->|"unknown"| O["'Chưa hiểu...'"]
+    </div>
+</div>
+
+<h3>5b. Xử lý gửi câu hỏi + PDF</h3>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["_handle_get_questions"] --> B["🔍 Query N câu đến hạn"]
+    B --> C{"Có câu?"}
+    C -->|"❌"| D["'🎉 Không có câu cần ôn!'"]
+    C -->|"✅"| E{"Câu nào có ảnh?"}
+    E -->|"Có"| F["'📷 Câu 1, 3 có hình\ntrong PDF'"]
+    E -->|"Không"| G["Skip"]
+    F --> H["'⏳ Đang tạo PDF...'"]
+    G --> H
+    H --> I["📄 generate_questions_pdf"]
+    I --> J["Ảnh → base64 data URI"]
+    J --> K["Jinja2 render HTML"]
+    K --> L["Playwright → PDF"]
+    L --> M{"OK?"}
+    M -->|"❌"| N["'❌ Lỗi PDF'"]
+    M -->|"✅"| O["📎 Gửi PDF qua FB API"]
+    O --> P["'💡 Vào web app\nđánh dấu đã ôn'"]
+    </div>
+</div>
+
+<h3>5c. Nhắc nhở tự động (n8n Cron)</h3>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["⏰ n8n Cron\nMỗi ngày 7AM"] --> B["GET /users-due"]
+    B --> C["Query Users có PSID"]
+    C --> D["Loop từng user"]
+    D --> E["Đếm câu cần ôn"]
+    E --> F{"due_today > 0?"}
+    F -->|"Có"| G["Gửi nhắc nhở"]
+    F -->|"Không"| H["Skip"]
+    </div>
+</div>
+
+<h3>5d. Phân tích Intent</h3>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["📝 Text input"] --> B{"Có email?"}
+    B -->|"✅"| C["→ link_account"]
+    B -->|"❌"| D{"help/hướng dẫn?"}
+    D -->|"✅"| E["→ help"]
+    D -->|"❌"| F{"thống kê/bao nhiêu?"}
+    F -->|"✅"| G["→ get_stats"]
+    F -->|"❌"| H{"gửi/cho N câu/bài?"}
+    H -->|"✅"| I["→ get_questions"]
+    H -->|"❌"| J{"ôn tập/review?"}
+    J -->|"✅"| K["→ get_questions"]
+    J -->|"❌"| L["→ unknown"]
+    </div>
+</div>
+
+<!-- 6. LUỒNG THƯ VIỆN -->
+<h2>6. Luồng Thư viện câu hỏi</h2>
+<blockquote>
+    <strong>Endpoints:</strong> /api/library/folders/*, /api/library/sets/*<br>
+    <strong>File:</strong> library.py
+</blockquote>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["👤 Mở Library"] --> B["GET /folders"]
+    B --> C["📂 Hiển thị cây thư mục"]
+    C --> D{"Thao tác?"}
+    D -->|"Tạo folder"| E["POST /folders"]
+    D -->|"Đổi tên"| F["PATCH /folders/id"]
+    D -->|"Xóa folder"| G["DELETE /folders/id"]
+    D -->|"Tạo tập câu hỏi"| H["POST /folders/id/sets"]
+    D -->|"Thêm câu vào tập"| I["POST /sets/id/questions"]
+    I --> J{"Câu đã thuộc\ntập khác?"}
+    J -->|"✅"| K["❌ HTTP 409"]
+    J -->|"❌"| L["✅ Thêm thành công"]
+    </div>
+</div>
+
+<!-- 7. LUỒNG AUTH -->
+<h2>7. Luồng Xác thực</h2>
+<blockquote>
+    <strong>Endpoints:</strong> POST /api/auth/register, /login, GET /me<br>
+    <strong>File:</strong> auth.py
+</blockquote>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    subgraph Register["📝 Đăng ký"]
+        A1["POST /register\nname, email, password, grade"]
+        A1 --> A2{"Email tồn tại?"}
+        A2 -->|"✅"| A3["❌ HTTP 400"]
+        A2 -->|"❌"| A4["🔐 bcrypt hash"]
+        A4 --> A5["💾 Tạo User"]
+        A5 --> A6["🎫 JWT Token"]
+    end
+    subgraph Login["🔑 Đăng nhập"]
+        B1["POST /login\nemail, password"]
+        B1 --> B2{"Đúng?"}
+        B2 -->|"❌"| B3["❌ HTTP 401"]
+        B2 -->|"✅"| B4["🎫 JWT Token"]
+    end
+    subgraph Protected["🛡️ Protected"]
+        C1["Authorization: Bearer token"]
+        C1 --> C2{"Valid?"}
+        C2 -->|"❌"| C3["❌ 401"]
+        C2 -->|"✅"| C4["✅ User object"]
+    end
+    </div>
+</div>
+
+<!-- 8. LUỒNG STATS -->
+<h2>8. Luồng Thống kê & Gamification</h2>
+<blockquote>
+    <strong>Endpoints:</strong> GET /api/stats/overview, POST /session/start|end<br>
+    <strong>File:</strong> stats.py
+</blockquote>
+<div class="diagram-container">
+    <div class="mermaid">
+flowchart TD
+    A["👤 Mở Stats Page"] --> B["📊 GET /stats/overview"]
+    B --> C["🔢 Query tổng hợp MySQL"]
+    C --> D["📌 Tổng quan\ntotal, reviewed\ndue today/week, streak"]
+    C --> E["📊 Charts\ntopics, difficulty\nheatmap 12w, forecast 14d"]
+    C --> F["⏱️ Study Time\ndaily, page_time"]
+    C --> G["🏅 Badges\n10 loại huy hiệu"]
+    D --> H["📱 Dashboard"]
+    E --> H
+    F --> H
+    G --> H
+    </div>
+</div>
+
+<!-- 9. ER DIAGRAM -->
+<h2>9. Sơ đồ Database</h2>
+<div class="diagram-container">
+    <div class="mermaid">
+erDiagram
+    User ||--o{ SourceExam : "uploads"
+    User ||--o{ Question : "owns"
+    User ||--o{ ChatSession : "creates"
+    User ||--o{ Folder : "owns"
+    User ||--o{ ReviewExam : "takes"
+    User ||--o{ StudySession : "tracks"
+    SourceExam ||--o{ Question : "contains"
+    ChatSession ||--o{ Message : "has"
+    Folder ||--o{ QuestionSet : "contains"
+    QuestionSet }o--o{ Question : "M2M"
+    ReviewExam }o--o{ Question : "M2M"
+
+    User {
+        int id PK
+        string name
+        string email
+        string password
+        string grade
+        string messenger_psid
+    }
+    Question {
+        int id PK
+        int source_exam_id FK
+        int user_id FK
+        text content
+        string topic
+        enum difficulty
+        bool has_image
+        datetime next_review_at
+        int review_count
+        float ease_factor
+    }
+    SourceExam {
+        int id PK
+        int user_id FK
+        string title
+        string image_url
+    }
+    ChatSession {
+        int id PK
+        int user_id FK
+    }
+    Message {
+        int id PK
+        int session_id FK
+        string role
+        text content
+    }
+    </div>
+</div>
+
+<div class="footer">
+    <p>📊 Tài liệu sơ đồ luồng — Math Chatbot System</p>
+    <p>Auto-generated by Antigravity AI</p>
+</div>
+
+<script>
+    document.getElementById('gen-date').textContent = new Date().toLocaleDateString('vi-VN');
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'default',
+        flowchart: { curve: 'basis', useMaxWidth: true },
+        themeVariables: {
+            primaryColor: '#e3f2fd',
+            primaryBorderColor: '#1a56a0',
+            primaryTextColor: '#1a1a2e',
+            lineColor: '#1a56a0',
+            secondaryColor: '#f8f9fb',
+        }
+    });
+</script>
+</body>
+</html>
