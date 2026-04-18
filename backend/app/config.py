@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     FB_VERIFY_TOKEN: str = "change-this-verify-token"    # Verify token khi đăng ký Webhook FB
     FB_PAGE_ID: str = ""                                 # Facebook Page ID (dùng cho Graph API)
     FB_APP_SECRET: str = ""                              # Facebook App Secret (verify webhook signature)
+    N8N_AI_WEBHOOK_URL: str = "http://localhost:5678/webhook/ai-chat" # N8n AI Intent Webhook
 
     class Config:
         env_file = ".env"
@@ -36,4 +37,4 @@ for _key, _default in _WEAK_DEFAULTS.items():
         _logger.warning(
             f"⚠️  {_key} đang dùng giá trị mặc định! "
             f"Hãy đổi trong file .env trước khi deploy production."
-        )
+        )

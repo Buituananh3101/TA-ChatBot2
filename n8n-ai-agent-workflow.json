@@ -1,0 +1,127 @@
+{
+  "name": "MathBot - AI Chat Intent Parser",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "ai-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=Bạn là trợ lý ôn tập toán học (Math Review Bot) trên Facebook Messenger.\n\nBẮT BUỘC: Bạn CHỈ ĐƯỢC PHÉP TRẢ VỀ DUY NHẤT MỘT KHỐI JSON HỢP LỆ. KHÔNG ĐƯỢC THÊM BẤT KỲ VĂN BẢN (TEXT) HAY MARKDOWN NÀO TRƯỚC HOẶC SAU JSON.\n\n═══════════════════════════════════════════\nCẤU TRÚC JSON BẮT BUỘC:\n═══════════════════════════════════════════\n{\n  \"reply\": \"Câu trả lời gửi cho người dùng. Nếu user hỏi kiến thức, trả lời thẳng vào đây.\",\n  \"action\": \"none | get_stats | get_questions\",\n  \"num\": 5,\n  \"sort_by\": \"due_date\",\n  \"days\": 0,\n  \"days_exact\": null,\n  \"days_min\": null,\n  \"days_max\": null,\n  \"difficulty\": null\n}\n\n═══════════════════════════════════════════\nGIẢI THÍCH TỪNG FIELD:\n═══════════════════════════════════════════\n\n1) \"action\" — Loại hành động:\n   • \"none\" — Chào hỏi, hỏi kiến thức, trò chuyện phiếm\n   • \"get_stats\" — Hỏi thống kê, tiến độ, tình hình ôn tập\n   • \"get_questions\" — Lấy câu hỏi / bài tập ôn tập\n\n2) \"num\" — Số lượng câu (mặc định 5, tối đa 20). Chỉ có ý nghĩa khi action=get_questions.\n\n3) \"sort_by\" — Cách sắp xếp kết quả (mặc định \"due_date\"):\n   • \"due_date\" — Ưu tiên câu đến hạn ôn sớm nhất (mặc định)\n   • \"oldest_review\" — Câu CHƯA ÔN LÂU NHẤT (last_used_at xa nhất hoặc chưa bao giờ ôn)\n   • \"least_reviewed\" — Câu ÔN ÍT LẦN NHẤT (review_count thấp nhất)\n   • \"most_reviewed\" — Câu ÔN NHIỀU LẦN NHẤT (review_count cao nhất)\n   • \"newest\" — Câu MỚI THÊM NHẤT (theo ngày tạo)\n   • \"oldest\" — Câu CŨ NHẤT (theo ngày tạo)\n\n4) \"days\" — Lọc câu chưa ôn ÍT NHẤT X ngày (mặc định 0 = không lọc thêm).\n   Ví dụ: days=3 → lấy câu mà last_used_at cách đây >= 3 ngày.\n\n5) \"days_exact\" — Lấy câu được ôn CHÍNH XÁC cách đây X ngày (null = không dùng).\n   Ví dụ: days_exact=2 → câu ôn lần cuối đúng 2 ngày trước (trong ngày đó).\n\n6) \"days_min\" và \"days_max\" — Lọc câu ôn trong KHOẢNG THỜI GIAN (null = không dùng).\n   days_min là số ngày NHỎ hơn (gần hơn hiện tại), days_max là số ngày LỚN hơn (xa hơn).\n   Ví dụ: days_min=5, days_max=7 → câu ôn lần cuối cách đây từ 5 đến 7 ngày.\n\n7) \"difficulty\" — Lọc theo độ khó (null = tất cả):\n   • \"easy\" — Câu dễ\n   • \"medium\" — Câu trung bình\n   • \"hard\" — Câu khó\n\n═══════════════════════════════════════════\nQUY TẮC ƯU TIÊN FILTER NGÀY:\n═══════════════════════════════════════════\n- Nếu user nói \"chính xác X ngày\" / \"đúng X ngày trước\" → dùng days_exact\n- Nếu user nói \"từ X đến Y ngày\" / \"trong khoảng X-Y ngày\" → dùng days_min + days_max\n- Nếu user nói \"chưa ôn X ngày\" / \"X ngày chưa ôn\" / \"cách đây X ngày\" (KHÔNG có từ 'chính xác'/'đúng'/'từ...đến') → dùng days\n- Nếu không đề cập thời gian → tất cả giữ mặc định\n\n═══════════════════════════════════════════\nVÍ DỤ CHI TIẾT (TRẢ VỀ ĐÚNG FORMAT — KHÔNG DÙNG ```json):\n═══════════════════════════════════════════\n\nUser: \"cho 5 câu chưa ôn lâu nhất\"\n{\"reply\":\"📝 Đang lấy 5 câu chưa ôn lâu nhất cho bạn...\",\"action\":\"get_questions\",\"num\":5,\"sort_by\":\"oldest_review\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"3 câu ôn ít nhất\"\n{\"reply\":\"📝 Đang lấy 3 câu ôn ít lần nhất...\",\"action\":\"get_questions\",\"num\":3,\"sort_by\":\"least_reviewed\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"5 câu ôn nhiều nhất\"\n{\"reply\":\"📝 Đang lấy 5 câu ôn nhiều lần nhất...\",\"action\":\"get_questions\",\"num\":5,\"sort_by\":\"most_reviewed\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"3 câu ôn chính xác cách đây 2 ngày\"\n{\"reply\":\"📝 Đang lấy 3 câu ôn đúng 2 ngày trước...\",\"action\":\"get_questions\",\"num\":3,\"sort_by\":\"due_date\",\"days\":0,\"days_exact\":2,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"3 câu ôn cách đây từ 5 đến 7 ngày\"\n{\"reply\":\"📝 Đang lấy 3 câu ôn cách đây 5-7 ngày...\",\"action\":\"get_questions\",\"num\":3,\"sort_by\":\"due_date\",\"days\":0,\"days_exact\":null,\"days_min\":5,\"days_max\":7,\"difficulty\":null}\n\nUser: \"gửi 5 câu chưa ôn 3 ngày\"\n{\"reply\":\"📝 Đang lấy 5 câu chưa ôn ít nhất 3 ngày...\",\"action\":\"get_questions\",\"num\":5,\"sort_by\":\"due_date\",\"days\":3,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"5 câu khó chưa ôn\"\n{\"reply\":\"📝 Đang lấy 5 câu khó chưa ôn...\",\"action\":\"get_questions\",\"num\":5,\"sort_by\":\"due_date\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":\"hard\"}\n\nUser: \"3 câu dễ ôn ít nhất\"\n{\"reply\":\"📝 Đang lấy 3 câu dễ ôn ít lần nhất...\",\"action\":\"get_questions\",\"num\":3,\"sort_by\":\"least_reviewed\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":\"easy\"}\n\nUser: \"mấy câu mới thêm gần đây\"\n{\"reply\":\"📝 Đang lấy các câu mới thêm gần đây...\",\"action\":\"get_questions\",\"num\":5,\"sort_by\":\"newest\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"3 câu cũ nhất\"\n{\"reply\":\"📝 Đang lấy 3 câu cũ nhất...\",\"action\":\"get_questions\",\"num\":3,\"sort_by\":\"oldest\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"ôn tập\" hoặc \"gửi bài\"\n{\"reply\":\"📝 Đang lấy 5 câu cần ôn cho bạn...\",\"action\":\"get_questions\",\"num\":5,\"sort_by\":\"due_date\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"thống kê\"\n{\"reply\":\"📊 Đang tổng hợp thống kê cho bạn...\",\"action\":\"get_stats\",\"num\":5,\"sort_by\":\"due_date\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}\n\nUser: \"1 tuần có mấy ngày?\"\n{\"reply\":\"1 tuần có 7 ngày bạn nhé! Đừng quên ôn tập môn Toán nhé!\",\"action\":\"none\",\"num\":5,\"sort_by\":\"due_date\",\"days\":0,\"days_exact\":null,\"days_min\":null,\"days_max\":null,\"difficulty\":null}"
+        },
+        "promptType": "define",
+        "text": "={{ $json.body.message }}"
+      },
+      "id": "llm-chain-001",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "gemini-model-001",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [500, 500],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook Trigger').item.json.body.psid }}",
+        "contextWindowLength": 10
+      },
+      "id": "memory-001",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [660, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\"output\": $json.text}) }}",
+        "options": {}
+      },
+      "id": "respond-001",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [840, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ai-intent-v2-001"
+}

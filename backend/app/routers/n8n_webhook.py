@@ -73,6 +73,104 @@ def _build_due_filter(query, user_id: int, days: int = 0):
     return query
 
 
+def _build_advanced_query(db: Session, user_id: int, intent: dict):
+    """
+    Xây dựng query nâng cao dựa trên intent đã parse.
+    Hỗ trợ:
+      - sort_by: due_date, oldest_review, least_reviewed, most_reviewed, newest, oldest
+      - days: câu chưa ôn ít nhất X ngày
+      - days_exact: câu ôn chính xác X ngày trước
+      - days_min + days_max: câu ôn trong khoảng X-Y ngày trước
+      - difficulty: easy, medium, hard
+    """
+    num = min(intent.get("num", 5), 20)
+    sort_by = intent.get("sort_by", "due_date")
+    days = intent.get("days", 0)
+    days_exact = intent.get("days_exact")
+    days_min = intent.get("days_min")
+    days_max = intent.get("days_max")
+    difficulty = intent.get("difficulty")
+
+    now = datetime.utcnow()
+
+    query = (
+        db.query(Question)
+        .join(question_set_items, Question.id == question_set_items.c.question_id)
+        .filter(Question.user_id == user_id)
+    )
+
+    # ── Filter theo difficulty ───────────────────────────────────────────────
+    if difficulty and difficulty in ("easy", "medium", "hard"):
+        query = query.filter(Question.difficulty == difficulty)
+
+    # ── Filter theo ngày ─────────────────────────────────────────────────────
+    if days_exact is not None and isinstance(days_exact, (int, float)) and days_exact >= 0:
+        # Chính xác X ngày trước: last_used_at nằm trong ngày đó
+        day_start = (now - timedelta(days=int(days_exact))).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        query = query.filter(
+            Question.last_used_at >= day_start,
+            Question.last_used_at < day_end
+        )
+    elif days_min is not None and days_max is not None:
+        # Khoảng: ôn cách đây từ days_min đến days_max ngày
+        # days_min (gần hơn) → cutoff xa hơn trong thời gian
+        # days_max (xa hơn) → cutoff gần hơn trong thời gian
+        d_min = int(days_min) if isinstance(days_min, (int, float)) else 0
+        d_max = int(days_max) if isinstance(days_max, (int, float)) else 0
+        if d_min > d_max:
+            d_min, d_max = d_max, d_min  # Swap nếu user nói ngược
+        range_start = (now - timedelta(days=d_max)).replace(hour=0, minute=0, second=0, microsecond=0)
+        range_end = (now - timedelta(days=d_min)).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        query = query.filter(
+            Question.last_used_at >= range_start,
+            Question.last_used_at < range_end
+        )
+    elif days > 0:
+        # Legacy: câu chưa ôn ít nhất X ngày
+        cutoff = now - timedelta(days=days)
+        query = query.filter(
+            (Question.last_used_at == None) | (Question.last_used_at <= cutoff)
+        )
+    else:
+        # Mặc định: chỉ áp dụng due filter nếu sort_by là due_date
+        if sort_by == "due_date":
+            yesterday = now - timedelta(days=1)
+            query = query.filter(
+                (
+                    (Question.next_review_at == None) & (
+                        (Question.last_used_at == None) | (Question.last_used_at <= yesterday)
+                    )
+                ) | (Question.next_review_at <= now)
+            )
+
+    # ── Sắp xếp (MySQL-compatible, không dùng NULLS FIRST) ─────────────────
+    # MySQL mặc định: ASC → NULLs đứng đầu, nên chỉ cần .asc() là đủ.
+    if sort_by == "oldest_review":
+        # Câu chưa ôn lâu nhất: NULL first (chưa bao giờ ôn), rồi cũ nhất
+        query = query.order_by(Question.last_used_at.asc())
+    elif sort_by == "least_reviewed":
+        # Câu ôn ít lần nhất
+        query = query.order_by(Question.review_count.asc())
+    elif sort_by == "most_reviewed":
+        # Câu ôn nhiều lần nhất
+        query = query.order_by(Question.review_count.desc())
+    elif sort_by == "newest":
+        # Câu mới thêm nhất
+        query = query.order_by(Question.created_at.desc())
+    elif sort_by == "oldest":
+        # Câu cũ nhất
+        query = query.order_by(Question.created_at.asc())
+    else:
+        # due_date (mặc định)
+        query = query.order_by(
+            Question.next_review_at.asc(),
+            Question.last_used_at.asc()
+        )
+
+    return query.limit(num).all()
+
+
 def _count_due_today(db: Session, user_id: int) -> int:
     """Đếm số câu đến hạn ôn hôm nay cho một user."""
     q = (
@@ -313,57 +411,243 @@ async def _log_notification(
         logger.warning(f"Không thể ghi notification log: {e}")
 
 
-def _parse_intent(text: str) -> dict:
-    """
-    Phân tích ý định người dùng từ tin nhắn thô.
-    Trả về dict với 'intent' và các tham số liên quan.
+def _detect_email(text: str):
+    """Detect email trong tin nhắn để liên kết tài khoản."""
+    email_match = re.search(r"[\w.\-+]+@[\w\-]+\.[a-z]{2,}", text.lower().strip())
+    if email_match:
+        return email_match.group(0)
+    return None
 
-    Các intent hiện hỗ trợ:
-      - 'get_questions'  : gửi câu hỏi cần ôn (có thể kèm số lượng + số ngày)
-      - 'get_stats'      : xem thống kê câu cần ôn
-      - 'link_account'   : liên kết tài khoản qua email
-      - 'help'           : hướng dẫn sử dụng
-      - 'unknown'        : không nhận diện được
+def _default_intent(**overrides) -> dict:
+    """Tạo intent dict với giá trị mặc định, ghi đè bằng overrides."""
+    base = {
+        "reply": "", "action": "none", "num": 5,
+        "sort_by": "due_date", "days": 0,
+        "days_exact": None, "days_min": None, "days_max": None,
+        "difficulty": None,
+    }
+    base.update(overrides)
+    return base
+
+
+def _parse_intent_fallback(text: str) -> dict:
+    """
+    Fallback: phân tích ý định bằng regex khi n8n AI không khả dụng.
+    Trả về dict tương thích với response format của n8n AI.
+    Hỗ trợ: sort_by, days_exact, days_min/max, difficulty.
     """
     text_lower = text.lower().strip()
 
-    # ── Intent: liên kết tài khoản (email pattern) — kiểm tra sớm nhất ──────
-    email_match = re.search(r"[\w.\-+]+@[\w\-]+\.[a-z]{2,}", text_lower)
-    if email_match:
-        return {"intent": "link_account", "email": email_match.group(0)}
+    # ── Thống kê ─────────────────────────────────────────────────────────────
+    if any(k in text_lower for k in ["thống kê", "bao nhiêu", "còn lại", "tổng", "stat", "tiến trình", "tiến độ"]):
+        return _default_intent(action="get_stats")
 
-    # ── Intent: help — kiểm tra trước get_questions ──────────────────────────
+    # ── Help ──────────────────────────────────────────────────────────────────
     if any(k in text_lower for k in ["help", "hướng dẫn", "giúp", "lệnh", "hỗ trợ", "menu"]):
-        return {"intent": "help"}
+        return _default_intent(
+            reply="📚 Hướng dẫn sử dụng:\n\n"
+                  "• 'gửi 5 câu chưa ôn' → Nhận 5 câu cần ôn\n"
+                  "• '5 câu chưa ôn lâu nhất' → Câu lâu chưa ôn nhất\n"
+                  "• '3 câu ôn ít nhất' → Câu ôn ít lần nhất\n"
+                  "• '3 câu ôn nhiều nhất' → Câu ôn nhiều lần nhất\n"
+                  "• '3 câu ôn chính xác cách đây 2 ngày'\n"
+                  "• '3 câu ôn cách đây từ 5 đến 7 ngày'\n"
+                  "• '5 câu khó chưa ôn' → Lọc theo độ khó\n"
+                  "• 'mấy câu mới thêm' → Câu vừa thêm gần đây\n"
+                  "• 'thống kê' → Xem số câu cần ôn\n"
+                  "• 'hướng dẫn' → Hiện menu này",
+        )
 
-    # ── Intent: thống kê — kiểm tra trước get_questions ──────────────────────
-    if any(k in text_lower for k in ["thống kê", "bao nhiêu", "còn lại", "tổng", "stat"]):
-        return {"intent": "get_stats"}
+    # ── Chào hỏi ─────────────────────────────────────────────────────────────
+    if any(k in text_lower for k in ["hi", "hello", "xin chào", "chào"]):
+        return _default_intent(reply="👋 Chào bạn! Gõ 'hướng dẫn' để xem các lệnh có sẵn nhé!")
 
-    # ── Intent: lấy câu hỏi ôn tập ──────────────────────────────────────────
-    # VD: "gửi 5 câu chưa ôn", "cho tôi 3 bài cách đây 2 ngày", "ôn tập ngay"
-    # Yêu cầu phải có từ khóa liên quan rõ ràng để tránh match nhầm
+    # ── Extract số lượng câu ──────────────────────────────────────────────────
+    num_match = re.search(r"(\d+)\s*(?:câu|bài)", text_lower)
+    num = int(num_match.group(1)) if num_match else None
+
+    # ── Extract difficulty ───────────────────────────────────────────────────
+    difficulty = None
+    if any(k in text_lower for k in ["dễ", "easy"]):
+        difficulty = "easy"
+    elif any(k in text_lower for k in ["khó", "hard"]):
+        difficulty = "hard"
+    elif any(k in text_lower for k in ["trung bình", "medium", "tb"]):
+        difficulty = "medium"
+
+    # ── Pattern: "chưa ôn lâu nhất" / "lâu nhất chưa ôn" ────────────────────
+    if re.search(r"(?:chưa\s*ôn\s*lâu|lâu\s*(?:nhất)?\s*chưa\s*ôn|lâu\s*nhất)", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu chưa ôn lâu nhất...",
+            action="get_questions", num=n,
+            sort_by="oldest_review", difficulty=difficulty,
+        )
+
+    # ── Pattern: "ôn ít nhất" / "ít lần nhất" ────────────────────────────────
+    if re.search(r"(?:ôn\s*ít|ít\s*(?:lần\s*)?nhất)", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu ôn ít lần nhất...",
+            action="get_questions", num=n,
+            sort_by="least_reviewed", difficulty=difficulty,
+        )
+
+    # ── Pattern: "ôn nhiều nhất" / "nhiều lần nhất" ──────────────────────────
+    if re.search(r"(?:ôn\s*nhiều|nhiều\s*(?:lần\s*)?nhất)", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu ôn nhiều lần nhất...",
+            action="get_questions", num=n,
+            sort_by="most_reviewed", difficulty=difficulty,
+        )
+
+    # ── Pattern: "mới thêm" / "mới nhất" / "gần đây" ─────────────────────────
+    if re.search(r"(?:mới\s*thêm|mới\s*nhất|gần\s*đây|vừa\s*thêm)", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu mới thêm gần đây...",
+            action="get_questions", num=n,
+            sort_by="newest", difficulty=difficulty,
+        )
+
+    # ── Pattern: "cũ nhất" ───────────────────────────────────────────────────
+    if re.search(r"cũ\s*nhất", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu cũ nhất...",
+            action="get_questions", num=n,
+            sort_by="oldest", difficulty=difficulty,
+        )
+
+    # ── Pattern: "chính xác / đúng X ngày" ───────────────────────────────────
+    exact_match = re.search(
+        r"(?:chính\s*xác|đúng)\s*(?:cách\s*đây\s*)?(\d+)\s*(?:ngày|hôm)", text_lower
+    )
+    if not exact_match:
+        exact_match = re.search(
+            r"(\d+)\s*(?:ngày|hôm)\s*(?:trước)?\s*(?:chính\s*xác|đúng)", text_lower
+        )
+    if exact_match:
+        days_exact = int(exact_match.group(1))
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu ôn đúng {days_exact} ngày trước...",
+            action="get_questions", num=n,
+            days_exact=days_exact, difficulty=difficulty,
+        )
+
+    # ── Pattern: "từ X đến Y ngày" / "X-Y ngày" / "trong khoảng X đến Y" ────
+    range_match = re.search(
+        r"(?:từ|trong\s*khoảng)\s*(\d+)\s*(?:đến|tới|-)\s*(\d+)\s*(?:ngày|hôm)", text_lower
+    )
+    if not range_match:
+        range_match = re.search(
+            r"(\d+)\s*(?:đến|tới|-)\s*(\d+)\s*(?:ngày|hôm)", text_lower
+        )
+    if range_match:
+        d1 = int(range_match.group(1))
+        d2 = int(range_match.group(2))
+        days_min, days_max = min(d1, d2), max(d1, d2)
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu ôn cách đây {days_min}-{days_max} ngày...",
+            action="get_questions", num=n,
+            days_min=days_min, days_max=days_max, difficulty=difficulty,
+        )
+
+    # ── Pattern: Lấy câu hỏi ôn tập (generic) ───────────────────────────────
     q_match = re.search(
-        r"(?:g[uử]i|cho\s*(?:tôi|mình)?|lấy)\s*(\d+)?\s*(?:câu|bài|bài tập)",
+        r"(?:g[uử]i|cho\s*(?:tôi|mình)?|lấy|gửi)\s*(\d+)?\s*(?:câu|bài|bài tập)",
         text_lower,
     )
     day_match = re.search(r"(\d+)\s*(?:ngày|hôm)", text_lower)
 
-    # Match trực tiếp pattern hoặc có từ khóa ôn tập rõ ràng
     if q_match:
-        num = int(q_match.group(1)) if q_match.group(1) else 5
+        n = int(q_match.group(1)) if q_match.group(1) else 5
         days = int(day_match.group(1)) if day_match else 0
-        return {"intent": "get_questions", "num": min(num, 20), "days": days}
+        return _default_intent(
+            reply=f"📝 Đang lấy {min(n, 20)} câu cho bạn...",
+            action="get_questions", num=min(n, 20),
+            days=days, difficulty=difficulty,
+        )
 
-    # Các từ khóa shortcut không cần pattern đầy đủ
+    # ── Từ khóa ôn tập ───────────────────────────────────────────────────────
     if any(k in text_lower for k in ["ôn tập", "ôn ngay", "cần ôn", "review", "ôn bài"]):
         days = int(day_match.group(1)) if day_match else 0
-        # Tìm số lượng nếu có
-        num_match = re.search(r"(\d+)", text_lower)
-        num = int(num_match.group(1)) if num_match else 5
-        return {"intent": "get_questions", "num": min(num, 20), "days": days}
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu cho bạn...",
+            action="get_questions", num=n,
+            days=days, difficulty=difficulty,
+        )
 
-    return {"intent": "unknown"}
+    # ── Không nhận diện ───────────────────────────────────────────────────────
+    return _default_intent(
+        reply="🤔 Tôi chưa hiểu yêu cầu đó.\n\nThử gõ: 'gửi 5 câu chưa ôn' hoặc 'hướng dẫn'",
+    )
+
+
+async def _call_n8n_ai_agent(user_id: int, user_name: str, psid: str, message: str) -> dict | None:
+    """
+    Gọi n8n AI Agent webhook để trích xuất ý định và sinh câu trả lời.
+    Trả về None nếu n8n không khả dụng.
+    """
+    webhook_url = settings.N8N_AI_WEBHOOK_URL
+    payload = {"user_id": user_id, "user_name": user_name, "psid": psid, "message": message}
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(webhook_url, json=payload)
+            logger.info(f"n8n response: status={resp.status_code}, body={resp.text[:500]}")
+
+            if resp.status_code != 200:
+                logger.warning(f"n8n AI error: status {resp.status_code}")
+                return None
+
+            # Parse JSON response
+            try:
+                data = resp.json()
+            except Exception:
+                logger.warning(f"n8n trả về non-JSON: {resp.text[:200]}")
+                return None
+
+            return {
+                "reply": data.get("reply", data.get("output", "")),
+                "action": data.get("action", "none"),
+                "num": min(data.get("num", 5), 20),
+                "sort_by": data.get("sort_by", "due_date"),
+                "days": data.get("days", 0),
+                "days_exact": data.get("days_exact"),
+                "days_min": data.get("days_min"),
+                "days_max": data.get("days_max"),
+                "difficulty": data.get("difficulty"),
+            }
+    except httpx.TimeoutException:
+        logger.warning("n8n AI timeout sau 30s")
+        return None
+    except Exception as e:
+        logger.warning(f"n8n AI unavailable: {e}")
+        return None
+
+
+def _split_message(text: str, max_len: int = 2000) -> list[str]:
+    """Chia tin nhắn dài thành nhiều phần nhỏ hơn max_len ký tự."""
+    if len(text) <= max_len:
+        return [text]
+    chunks = []
+    while text:
+        if len(text) <= max_len:
+            chunks.append(text)
+            break
+        split_at = text.rfind("\n", 0, max_len)
+        if split_at == -1 or split_at < max_len // 2:
+            split_at = text.rfind(" ", 0, max_len)
+        if split_at == -1:
+            split_at = max_len
+        chunks.append(text[:split_at])
+        text = text[split_at:].lstrip()
+    return chunks
 
 
 # ── Facebook Webhook Verification (GET) ──────────────────────────────────────
@@ -418,6 +702,11 @@ async def facebook_receive_message(request: Request, db: Session = Depends(get_d
 
             # Chỉ xử lý message (bỏ qua delivery, read, postback...)
             message = event.get("message", {})
+
+            # Bỏ qua echo — tin nhắn do chính bot gửi, Facebook gửi lại webhook
+            if message.get("is_echo"):
+                continue
+
             text = message.get("text", "").strip()
             if not text:
                 continue
@@ -426,64 +715,57 @@ async def facebook_receive_message(request: Request, db: Session = Depends(get_d
 
             # Tìm user theo PSID
             user = db.query(User).filter(User.messenger_psid == sender_psid).first()
-            intent = _parse_intent(text)
 
             # Chưa liên kết tài khoản
             if not user:
-                if intent["intent"] == "link_account":
-                    # Người dùng gõ email để liên kết
-                    target = db.query(User).filter(User.email == intent["email"]).first()
+                email = _detect_email(text)
+                if email:
+                    target = db.query(User).filter(User.email == email).first()
                     if not target:
-                        await _send_messenger_message(
-                            sender_psid,
-                            "❌ Không tìm thấy tài khoản với email đó. Vui lòng kiểm tra lại."
-                        )
+                        await _send_messenger_message(sender_psid, "❌ Không tìm thấy tài khoản với email đó.")
                     elif target.messenger_psid:
-                        await _send_messenger_message(
-                            sender_psid,
-                            "⚠️ Email này đã được liên kết với một tài khoản Messenger khác."
-                        )
+                        await _send_messenger_message(sender_psid, "⚠️ Email này đã được liên kết một Messenger khác.")
                     else:
                         target.messenger_psid = sender_psid
                         db.commit()
                         await _send_messenger_message(
                             sender_psid,
-                            f"✅ Liên kết thành công! Xin chào {target.name} 👋\n\n"
-                            "Từ giờ bạn có thể:\n"
-                            "• Gõ 'gửi 5 câu chưa ôn 2 ngày' để nhận câu hỏi\n"
-                            "• Gõ 'thống kê' để xem tổng quan\n"
-                            "• Gõ 'hướng dẫn' để xem lệnh"
+                            f"✅ Liên kết thành công! Xin chào {target.name} 👋\n"
+                            "Từ giờ bạn có thể chat để nhận bài ôn tập, xem thống kê..."
                         )
                 else:
                     await _send_messenger_message(
-                        sender_psid,
-                        "👋 Xin chào! Vui lòng liên kết tài khoản của bạn.\n\n"
-                        "Hãy gõ địa chỉ EMAIL bạn đã đăng ký trên hệ thống:"
+                        sender_psid, "👋 Xin chào! Hãy gõ địa chỉ EMAIL bạn dùng trên web để liên kết tài khoản:"
                     )
                 continue
 
-            # Đã liên kết – xử lý theo intent
-            if intent["intent"] == "get_questions":
-                await _handle_get_questions(sender_psid, user.id, intent, db)
+            # Check email (nếu gõ lúc đã liên kết)
+            email = _detect_email(text)
+            if email:
+                await _send_messenger_message(sender_psid, f"ℹ️ Tài khoản của bạn đã được liên kết với tên {user.name}.")
+                continue
 
-            elif intent["intent"] == "get_stats":
+            # Gọi n8n AI Agent
+            ai_resp = await _call_n8n_ai_agent(user.id, user.name, sender_psid, text)
+            if ai_resp is None:
+                await _send_messenger_message(
+                    sender_psid,
+                    "⚠️ Hệ thống AI đang bận, vui lòng thử lại sau."
+                )
+                continue
+
+            # Gửi text reply trước
+            reply = ai_resp.get("reply", "")
+            if reply:
+                for chunk in _split_message(reply):
+                    await _send_messenger_message(sender_psid, chunk)
+
+            # Chạy DB action sau
+            action = ai_resp.get("action", "none")
+            if action == "get_questions":
+                await _handle_get_questions(sender_psid, user.id, ai_resp, db)
+            elif action == "get_stats":
                 await _handle_get_stats(sender_psid, user.id, user.name, db)
-
-            elif intent["intent"] == "help":
-                await _send_messenger_message(
-                    sender_psid,
-                    "📚 Hướng dẫn sử dụng:\n\n"
-                    "• 'gửi 5 câu chưa ôn' → Nhận 5 câu cần ôn ngay\n"
-                    "• 'gửi 3 câu cách đây 2 ngày' → Câu chưa ôn 2+ ngày\n"
-                    "• 'thống kê' → Xem số câu cần ôn hôm nay\n"
-                    "• 'hướng dẫn' → Hiện menu này"
-                )
-            else:
-                await _send_messenger_message(
-                    sender_psid,
-                    "🤔 Tôi chưa hiểu yêu cầu đó.\n\n"
-                    "Thử gõ: 'gửi 5 câu chưa ôn' hoặc 'hướng dẫn'"
-                )
 
     return {"status": "ok"}
 
@@ -491,23 +773,9 @@ async def facebook_receive_message(request: Request, db: Session = Depends(get_d
 async def _handle_get_questions(
     psid: str, user_id: int, intent: dict, db: Session
 ):
-    """Lấy câu hỏi cần ôn và gửi về Messenger."""
-    num = intent.get("num", 5)
+    """Lấy câu hỏi cần ôn và gửi về Messenger (hỗ trợ advanced query)."""
+    questions = _build_advanced_query(db, user_id, intent)
     days = intent.get("days", 0)
-    now = datetime.utcnow()
-
-    query = (
-        db.query(Question)
-        .join(question_set_items, Question.id == question_set_items.c.question_id)
-    )
-    query = _build_due_filter(query, user_id, days)
-
-    questions = (
-        query
-        .order_by(Question.next_review_at.asc(), Question.last_used_at.asc())
-        .limit(num)
-        .all()
-    )
 
     if not questions:
         day_text = f" (chưa ôn {days}+ ngày)" if days > 0 else ""
