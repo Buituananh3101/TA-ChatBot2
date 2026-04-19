@@ -78,6 +78,7 @@ const DIFFICULTIES = [
   { value: 'medium', label: 'Trung bình' },
   { value: 'hard', label: 'Khó' }
 ]
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 export function DocumentsPage() {
   useStudyTracker('documents')  
@@ -89,6 +90,8 @@ export function DocumentsPage() {
   const [renamingFolder, setRenamingFolder] = useState<number | null>(null)
   const [renamingSet, setRenamingSet] = useState<number | null>(null)
   const [renameVal, setRenameVal] = useState('')
+
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const [isFoldersOpen, setIsFoldersOpen] = useState(true)
   const [isSetsOpen, setIsSetsOpen] = useState(true)
@@ -247,7 +250,37 @@ export function DocumentsPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 60px)', background: '#f5f7fb' }}>
+    <>
+      {/* Lightbox xem ảnh gốc */}
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.82)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out',
+          }}
+        >
+          <img
+            src={lightboxUrl}
+            alt="Ảnh đề gốc"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxUrl(null)}
+            style={{
+              position: 'absolute', top: 20, right: 28,
+              background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%',
+              width: 36, height: 36, cursor: 'pointer',
+              color: '#fff', fontSize: 20, lineHeight: '36px', textAlign: 'center',
+            }}
+          >×</button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', height: 'calc(100vh - 60px)', background: '#f5f7fb' }}>
 
       {/* ── Cột 1: Folders (280px) ── */}
       <div style={col(isFoldersOpen, 280)}>
@@ -442,6 +475,24 @@ export function DocumentsPage() {
                         >
                           {DIFFICULTIES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                         </select>
+                        {q.has_image && (
+                          <span
+                            title="Câu hỏi này có hình vẽ / đồ thị trong ảnh gốc"
+                            style={{
+                              fontSize: 11,
+                              padding: '2px 9px',
+                              borderRadius: 20,
+                              background: '#fff7e6',
+                              color: '#b06000',
+                              border: '1px solid #ffd591',
+                              fontWeight: 500,
+                              cursor: q.source_image_url ? 'pointer' : 'default',
+                            }}
+                            onClick={() => q.source_image_url && setLightboxUrl(`${API_BASE}${q.source_image_url}`)}
+                          >
+                            🖼︎ Có hình vẽ
+                          </span>
+                        )}
                         {(() => {
                           const isReviewed = !!q.last_used_at;
                           const daysAgo = isReviewed ? Math.floor((new Date().getTime() - new Date(q.last_used_at!).getTime()) / (1000 * 3600 * 24)) : null;
@@ -511,5 +562,6 @@ export function DocumentsPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

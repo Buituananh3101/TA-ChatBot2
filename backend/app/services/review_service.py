@@ -57,43 +57,33 @@ async def generate_review_exam(
     num_questions: int,
     db: Session,
 ) -> ReviewExam:
+    questions_by_topic = {}
+    for topic in topics:
+        qs = (
+            db.query(Question)
+            .join(question_set_items, Question.id == question_set_items.c.question_id)
+            .filter(Question.user_id == user_id, Question.topic == topic)
+            .order_by(
+                Question.next_review_at.asc(),   # câu đến hạn sớm nhất lên trên
+                Question.last_used_at.asc(),
+            )
+            .limit(num_questions)
+            .all()
+        )
+        questions_by_topic[topic] = qs
+
     selected: list[Question] = []
-    per_topic = max(1, num_questions // len(topics))
-    remainder = num_questions - per_topic * len(topics)
-
-    for i, topic in enumerate(topics):
-        limit = per_topic + (1 if i < remainder else 0)
-
-        # Lấy candidate IDs từ Chroma (vector search)
-        candidate_ids = search_questions(user_id, topic, n=limit * 3)
-
-        if not candidate_ids:
-            # Fallback: lấy thẳng từ MySQL, ưu tiên câu lâu chưa ôn / chưa có next_review_at
-            qs = (
-                db.query(Question)
-                .join(question_set_items, Question.id == question_set_items.c.question_id)
-                .filter(Question.user_id == user_id, Question.topic == topic)
-                .order_by(
-                    Question.next_review_at.asc(),   # câu đến hạn sớm nhất lên trên
-                    Question.last_used_at.asc(),
-                )
-                .limit(limit)
-                .all()
-            )
-        else:
-            qs = (
-                db.query(Question)
-                .join(question_set_items, Question.id == question_set_items.c.question_id)
-                .filter(Question.id.in_(candidate_ids))
-                .order_by(
-                    Question.next_review_at.asc(),
-                    Question.last_used_at.asc(),
-                )
-                .limit(limit)
-                .all()
-            )
-
-        selected.extend(qs)
+    while len(selected) < num_questions:
+        added_in_round = False
+        for topic in topics:
+            if len(selected) >= num_questions:
+                break
+            if questions_by_topic[topic]:
+                selected.append(questions_by_topic[topic].pop(0))
+                added_in_round = True
+        
+        if not added_in_round:
+            break
 
     # Trộn thứ tự câu hỏi
     random.shuffle(selected)
