@@ -18,7 +18,7 @@ export function StudioPanel({ notebook, onUpdate, isFs, onToggleFs, onCloseRight
   const [showHistory, setShowHistory] = useState(false)
   // Local cache: khi user edit mindmap, data mới nhất được lưu ở đây
   const localDataCache = useRef<Record<number, any>>({})
-  
+
   const mindmaps = notebook.mindmaps || []
 
   useEffect(() => {
@@ -64,31 +64,31 @@ export function StudioPanel({ notebook, onUpdate, isFs, onToggleFs, onCloseRight
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
       {activeMindmap ? (
-        <MindmapEditor 
-           key={activeMindmap.id} 
-           notebookId={notebook.id} 
-           mindmapId={activeMindmap.id} 
-           initialData={getInitialData(activeMindmap)} 
-           isFs={isFs}
-           onToggleFs={onToggleFs}
-           mindmaps={mindmaps}
-           onSelectMindmap={(id) => setActiveMindmapId(id)}
-           onDeleteMindmap={() => handleDeleteMindmap(activeMindmap.id)}
-           onGenerateNew={handleGenerate}
-           generating={generating}
-           onCloseRight={onCloseRight}
-           onDataChange={(data) => { localDataCache.current[activeMindmap.id] = data }}
-           showHistory={showHistory}
-           onToggleHistory={() => setShowHistory(!showHistory)}
+        <MindmapEditor
+          key={activeMindmap.id}
+          notebookId={notebook.id}
+          mindmapId={activeMindmap.id}
+          initialData={getInitialData(activeMindmap)}
+          isFs={isFs}
+          onToggleFs={onToggleFs}
+          mindmaps={mindmaps}
+          onSelectMindmap={(id) => setActiveMindmapId(id)}
+          onDeleteMindmap={() => handleDeleteMindmap(activeMindmap.id)}
+          onGenerateNew={handleGenerate}
+          generating={generating}
+          onCloseRight={onCloseRight}
+          onDataChange={(data) => { localDataCache.current[activeMindmap.id] = data }}
+          showHistory={showHistory}
+          onToggleHistory={() => setShowHistory(!showHistory)}
         />
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', position: 'relative' }}>
-           {!isFs && onCloseRight && (
-             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px', display: 'flex', justifyContent: 'flex-start' }}>
-               <button onClick={onCloseRight} title="Thu gọn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, padding: 0 }}>
-                 <ChevronRight size={16} />
-               </button>
-             </div>
+          {!isFs && onCloseRight && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px', display: 'flex', justifyContent: 'flex-start' }}>
+              <button onClick={onCloseRight} title="Thu gọn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, padding: 0 }}>
+                <ChevronRight size={16} />
+              </button>
+            </div>
           )}
           <div style={{ color: '#1a56a0', marginBottom: 12 }}>
             <BrainCircuit size={48} strokeWidth={1.5} />
@@ -97,11 +97,11 @@ export function StudioPanel({ notebook, onUpdate, isFs, onToggleFs, onCloseRight
           <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>
             Hệ thống AI sẽ phân tích các tài liệu bạn tải lên và tạo ra một sơ đồ tư duy trực quan, giúp bạn dễ dàng nắm bắt kiến thức trọng tâm.
           </p>
-          <button 
+          <button
             onClick={handleGenerate}
             disabled={generating || !notebook.sources?.length}
-            style={{ 
-              padding: '10px 24px', background: '#1a56a0', color: '#fff', border: 'none', 
+            style={{
+              padding: '10px 24px', background: '#1a56a0', color: '#fff', border: 'none',
               borderRadius: 8, cursor: 'pointer', fontWeight: 600,
               opacity: generating || !notebook.sources?.length ? 0.5 : 1
             }}

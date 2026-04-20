@@ -214,8 +214,21 @@ export function MindmapEditor({ notebookId, mindmapId, initialData, isFs, onTogg
         </div>
 
         {/* Bảng Lịch sử bên phải */}
-        {showHistory && (
-          <div style={{ width: 260, borderLeft: '1px solid #e0e0e0', background: '#fafbfc', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ 
+            position: 'absolute', // Cho trôi nổi lên trên thay vì nằm trong luồng flex
+            top: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10,
+            width: showHistory ? 260 : 0, 
+            opacity: showHistory ? 1 : 0,
+            borderLeft: showHistory ? '1px solid #e0e0e0' : 'none', 
+            background: '#fafbfc', display: 'flex', flexDirection: 'column', flexShrink: 0,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflow: 'hidden', whiteSpace: 'nowrap',
+            boxShadow: showHistory ? '-4px 0 16px rgba(0,0,0,0.08)' : 'none'
+        }}>
+          <div style={{ minWidth: 260, height: '100%', display: 'flex', flexDirection: 'column' }}>
              <div style={{ padding: '12px 14px', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13, color: '#1a56a0' }}>Lịch sử Bản đồ</span>
                 <button onClick={onToggleHistory} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none', cursor: 'pointer', opacity: 0.6 }}>
@@ -255,7 +268,7 @@ export function MindmapEditor({ notebookId, mindmapId, initialData, isFs, onTogg
                </div>
              )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

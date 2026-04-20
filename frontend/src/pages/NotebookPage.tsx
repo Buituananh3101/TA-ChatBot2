@@ -8,7 +8,7 @@ import { StudioPanel } from '../components/Notebook/StudioPanel'
 import { ChevronLeft, Edit2, Trash2, PanelLeft, FileText, BrainCircuit } from 'lucide-react'
 
 export function NotebookPage() {
-  useStudyTracker('notebook')  
+  useStudyTracker('notebook')
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [active, setActive] = useState<Notebook | null>(null)
   const [loading, setLoading] = useState(true)
@@ -20,6 +20,7 @@ export function NotebookPage() {
   const [mindmapFs, setMindmapFs] = useState(false)
   const [activeSources, setActiveSources] = useState<number[]>([])
   const [rightWidth, setRightWidth] = useState(380)
+  const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
@@ -48,8 +49,10 @@ export function NotebookPage() {
       document.removeEventListener('mouseup', onMouseUp)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
+      setIsDragging(false)
     }
 
+    setIsDragging(true)
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
     document.body.style.cursor = 'col-resize'
@@ -79,7 +82,7 @@ export function NotebookPage() {
       setActive(res.data)
       // Khi load notebook mới, tự động chọn tất cả source
       setActiveSources(res.data.sources.map((s: any) => s.id))
-    } catch {}
+    } catch { }
     setLoading(false)
   }
 
@@ -93,7 +96,7 @@ export function NotebookPage() {
       // Tự động mở rename cho notebook mới
       setRenaming(nb.id)
       setRenameVal(nb.title)
-    } catch {}
+    } catch { }
   }
 
   const saveRename = async (id: number) => {
@@ -103,7 +106,7 @@ export function NotebookPage() {
       setNotebooks(prev => prev.map(n => n.id === id ? { ...n, title: res.data.title } : n))
       if (active?.id === id) setActive(prev => prev ? { ...prev, title: res.data.title } : null)
       setRenaming(null)
-    } catch {}
+    } catch { }
   }
 
   const handleDelete = async (id: number) => {
@@ -119,118 +122,136 @@ export function NotebookPage() {
   return (
     <div ref={containerRef} style={{ display: 'flex', height: 'calc(100vh - 60px)', position: 'relative', overflow: 'hidden' }}>
       {/* ── THE LEFT FLANK (Sidebar + Sources) ── */}
-      {showSidebar && !mindmapFs && (
-        <div style={{ width: 220, borderRight: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', flexShrink: 0, background: '#fafbfc', boxSizing: 'border-box' }}>
-          <div style={{ height: 48, padding: '0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e0e0e0', flexShrink: 0, boxSizing: 'border-box' }}>
+      {!mindmapFs && (
+        <div style={{ 
+          width: showSidebar ? 220 : 0, 
+          opacity: showSidebar ? 1 : 0,
+          borderRight: showSidebar ? '1px solid #e0e0e0' : 'none', 
+          display: 'flex', flexDirection: 'column', flexShrink: 0, background: '#fafbfc', boxSizing: 'border-box',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflow: 'hidden', whiteSpace: 'nowrap'
+        }}>
+          <div style={{ minWidth: 220, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ height: 48, padding: '0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e0e0e0', flexShrink: 0, boxSizing: 'border-box' }}>
               <span style={{ fontWeight: 600, color: '#1a56a0', fontSize: 14 }}>Notebook</span>
               <button onClick={() => setShowSidebar(false)} title="Thu gọn danh sách" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: 12, display: 'flex', alignItems: 'center', padding: 0 }}>
                 <ChevronLeft size={16} />
               </button>
-          </div>
-          <div style={{ padding: '12px', overflowY: 'auto', flex: 1 }}>
-          <button onClick={newNotebook} style={{ width: '100%', padding: '8px', borderRadius: 8, background: '#1a56a0', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, marginBottom: 12 }}>
-            + Tạo Notebook
-          </button>
-            {notebooks.map((nb) => (
-              <div key={nb.id} onClick={() => { if (renaming !== nb.id) loadNotebook(nb.id) }} style={{
-                padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 4,
-                background: active?.id === nb.id ? '#eef2fa' : 'transparent',
-                border: active?.id === nb.id ? '1px solid #c9d8ee' : '1px solid transparent',
-              }}>
-                {renaming === nb.id ? (
-                   <input
-                     autoFocus
-                     value={renameVal}
-                     onChange={e => setRenameVal(e.target.value)}
-                     onBlur={() => saveRename(nb.id)}
-                     onKeyDown={e => { if (e.key === 'Enter') saveRename(nb.id); if (e.key === 'Escape') setRenaming(null) }}
-                     onClick={e => e.stopPropagation()}
-                     style={{ width: '100%', fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1.5px solid #1a56a0', outline: 'none' }}
-                   />
-                ) : (
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <div style={{ fontWeight: active?.id === nb.id ? 600 : 400, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                       {nb.title}
-                     </div>
-                     {active?.id === nb.id && (
-                       <div style={{ display: 'flex', gap: 4 }}>
-                         <button title="Sửa tên" onClick={(e) => { e.stopPropagation(); setRenaming(nb.id); setRenameVal(nb.title) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#555' }}><Edit2 size={14} /></button>
-                         <button title="Xoá" onClick={(e) => { e.stopPropagation(); handleDelete(nb.id) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#e74c3c' }}><Trash2 size={14} /></button>
-                       </div>
-                     )}
-                   </div>
-                )}
-                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{new Date(nb.created_at).toLocaleDateString('vi-VN')}</div>
-              </div>
-            ))}
+            </div>
+            <div style={{ padding: '12px', overflowY: 'auto', flex: 1 }}>
+              <button onClick={newNotebook} style={{ width: '100%', padding: '8px', borderRadius: 8, background: '#1a56a0', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, marginBottom: 12 }}>
+                + Tạo Notebook
+              </button>
+              {notebooks.map((nb) => (
+                <div key={nb.id} onClick={() => { if (renaming !== nb.id) loadNotebook(nb.id) }} style={{
+                  padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 4,
+                  background: active?.id === nb.id ? '#eef2fa' : 'transparent',
+                  border: active?.id === nb.id ? '1px solid #c9d8ee' : '1px solid transparent',
+                }}>
+                  {renaming === nb.id ? (
+                    <input
+                      autoFocus
+                      value={renameVal}
+                      onChange={e => setRenameVal(e.target.value)}
+                      onBlur={() => saveRename(nb.id)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveRename(nb.id); if (e.key === 'Escape') setRenaming(null) }}
+                      onClick={e => e.stopPropagation()}
+                      style={{ width: '100%', fontSize: 13, padding: '2px 4px', borderRadius: 4, border: '1.5px solid #1a56a0', outline: 'none' }}
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: active?.id === nb.id ? 600 : 400, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {nb.title}
+                      </div>
+                      {active?.id === nb.id && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button title="Sửa tên" onClick={(e) => { e.stopPropagation(); setRenaming(nb.id); setRenameVal(nb.title) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#555' }}><Edit2 size={14} /></button>
+                          <button title="Xoá" onClick={(e) => { e.stopPropagation(); handleDelete(nb.id) }} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: '#e74c3c' }}><Trash2 size={14} /></button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{new Date(nb.created_at).toLocaleDateString('vi-VN')}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Sources (Cột 1) */}
-      {showSources && !mindmapFs && !loading && active && (
-        <div style={{ width: 260, borderRight: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', background: '#fff', flexShrink: 0 }}>
-          <SourcesPanel 
-            notebook={active} 
-            onUpdate={() => loadNotebook(active.id)} 
-            onClose={() => setShowSources(false)} 
-            activeSources={activeSources}
-            setActiveSources={setActiveSources}
-          />
+      {!mindmapFs && !loading && active && (
+        <div style={{ 
+          width: showSources ? 260 : 0, 
+          opacity: showSources ? 1 : 0,
+          borderRight: showSources ? '1px solid #e0e0e0' : 'none', 
+          display: 'flex', flexDirection: 'column', background: '#fff', flexShrink: 0,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflow: 'hidden', whiteSpace: 'nowrap'
+        }}>
+          <div style={{ minWidth: 260, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <SourcesPanel
+              notebook={active}
+              onUpdate={() => loadNotebook(active.id)}
+              onClose={() => setShowSources(false)}
+              activeSources={activeSources}
+              setActiveSources={setActiveSources}
+            />
+          </div>
         </div>
       )}
 
       {/* ── THE CENTER FLANK (Chat Area) ── */}
       {!mindmapFs && (
-      <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', background: '#fafbfc', minWidth: 0, overflow: 'hidden' }}>
-        {/* Toggle Left Buttons when closed */}
-        <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, display: 'flex', gap: 8 }}>
-          {!showSidebar && (
-            <button 
-              onClick={() => setShowSidebar(true)} 
-              title="Mở Lịch sử Notebook"
-              style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', opacity: 0.8, fontSize: 16, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
-            >
-               <PanelLeft size={18} />
-            </button>
+        <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', background: '#fafbfc', minWidth: 0, overflow: 'hidden' }}>
+          {/* Toggle Left Buttons when closed */}
+          <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, display: 'flex', gap: 8 }}>
+            {!showSidebar && (
+              <button
+                onClick={() => setShowSidebar(true)}
+                title="Mở Lịch sử Notebook"
+                style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', opacity: 0.8, fontSize: 16, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
+              >
+                <PanelLeft size={18} />
+              </button>
+            )}
+            {!showSources && active && !loading && (
+              <button
+                onClick={() => setShowSources(true)}
+                title="Mở Nguồn tài liệu"
+                style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', opacity: 0.8, fontSize: 16, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
+              >
+                <FileText size={18} />
+              </button>
+            )}
+          </div>
+
+          {/* Toggle Right Button */}
+          {active && !loading && !showRight && (
+            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowRight(true)}
+                title="Mở Mindmap"
+                style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', opacity: 0.8, fontSize: 16, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1a56a0' }}
+              >
+                <BrainCircuit size={18} />
+              </button>
+            </div>
           )}
-          {!showSources && active && !loading && (
-            <button 
-              onClick={() => setShowSources(true)} 
-              title="Mở Nguồn tài liệu"
-              style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', opacity: 0.8, fontSize: 16, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
-            >
-               <FileText size={18} />
-            </button>
+
+          {loading ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>Đang tải...</div>
+          ) : active ? (
+            <NotebookChat notebookId={active.id} activeSources={activeSources} />
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#888' }}>
+              <p>Chưa có Notebook nào</p>
+              <button onClick={newNotebook} style={{ padding: '10px 24px', borderRadius: 8, background: '#1a56a0', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                Tạo Notebook đầu tiên
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Toggle Right Button */}
-        {active && !loading && !showRight && (
-          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: 8 }}>
-            <button 
-              onClick={() => setShowRight(true)} 
-              title="Mở Mindmap"
-              style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', opacity: 0.8, fontSize: 16, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1a56a0' }}
-            >
-               <BrainCircuit size={18} />
-            </button>
-          </div>
-        )}
-
-        {loading ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>Đang tải...</div>
-        ) : active ? (
-          <NotebookChat notebookId={active.id} activeSources={activeSources} />
-        ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#888' }}>
-            <p>Chưa có Notebook nào</p>
-            <button onClick={newNotebook} style={{ padding: '10px 24px', borderRadius: 8, background: '#1a56a0', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-              Tạo Notebook đầu tiên
-            </button>
-          </div>
-        )}
-      </div>
       )}
 
       {/* ── DRAG RESIZER ── */}
@@ -246,15 +267,25 @@ export function NotebookPage() {
       )}
 
       {/* ── THE RIGHT FLANK (Mindmap) ── */}
-      {showRight && !loading && active && (
-        <div style={{ flex: mindmapFs ? 1 : 'none', width: mindmapFs ? '100%' : rightWidth, maxWidth: mindmapFs ? '100%' : rightWidth, borderLeft: mindmapFs ? 'none' : '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', background: '#fff', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
-          <StudioPanel 
-             notebook={active} 
-             onUpdate={() => loadNotebook(active.id)} 
-             isFs={mindmapFs}
-             onToggleFs={() => setMindmapFs(!mindmapFs)}
-             onCloseRight={() => setShowRight(false)}
-          />
+      {!loading && active && (
+        <div style={{ 
+            flex: mindmapFs ? 1 : 'none', 
+            width: showRight ? (mindmapFs ? '100%' : rightWidth) : 0, 
+            opacity: showRight ? 1 : 0,
+            borderLeft: (!showRight || mindmapFs) ? 'none' : '1px solid #e0e0e0', 
+            display: 'flex', flexDirection: 'column', background: '#fff', flexShrink: 0, position: 'relative', overflow: 'hidden',
+            transition: (isDragging || mindmapFs) ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            whiteSpace: 'nowrap'
+        }}>
+          <div style={{ minWidth: 280, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <StudioPanel
+              notebook={active}
+              onUpdate={() => loadNotebook(active.id)}
+              isFs={mindmapFs}
+              onToggleFs={() => setMindmapFs(!mindmapFs)}
+              onCloseRight={() => setShowRight(false)}
+            />
+          </div>
         </div>
       )}
     </div>
