@@ -10,6 +10,7 @@ class QuestionOut(BaseModel):
     difficulty: str
     has_image: bool = False
     source_image_url: Optional[str] = None
+    question_type: str = "multiple_choice"
     created_at: datetime
     last_used_at: Optional[datetime] = None
     review_count: int = 0
@@ -19,8 +20,14 @@ class QuestionOut(BaseModel):
     interval_days: int = 1
     ease_factor: float = 2.5
 
+    answer_blocks: Optional[list] = None
+
     class Config:
         from_attributes = True
+
+class AnswerBlocksUpdate(BaseModel):
+    blocks: list
+
 
 
 class SourceExamOut(BaseModel):

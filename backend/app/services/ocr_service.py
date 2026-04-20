@@ -43,6 +43,9 @@ Trả về TRUE nếu trong ảnh câu hỏi này có BẤT KỲ yếu tố nào
 - Sơ đồ, biểu đồ
 Trả về FALSE nếu câu hỏi chỉ có chữ và công thức toán."""
     )
+    question_type: str = Field(
+        description="Chỉ được chọn 1: multiple_choice, true_false, fill_in"
+    )
 
 # ─── Prompt ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +66,11 @@ QUY TẮC TOÁN HỌC & FORMAT CHO TRƯỜNG "content":
    - Chỉ trích xuất PHẦN CHỮ (nội dung đề bài và các đáp án A/B/C/D)
    - TUYỆT ĐỐI KHÔNG cách vẽ lại bảng hay hình vẽ trong trường content
    - Nếu đề bài nhắc đến bảng/hình bằng lời (ví dụ: "Cho bảng biến thiên..."), giữ nguyên câu đó trong content
+
+PHÂN LOẠI "question_type":
+- multiple_choice: Câu hỏi trắc nghiệm có 4 đáp án A, B, C, D để chọn 1.
+- true_false: Câu hỏi có phần mệnh đề dạng a) b) c) d) yêu cầu xét tính Đúng/Sai.
+- fill_in: Câu hỏi yêu cầu tự tính và điền kết quả (không có sẵn đáp án để chọn).
 """
 
 # ─── Post-processing ──────────────────────────────────────────────────────────

@@ -95,23 +95,30 @@ async def upload_exam_image(
             detail="Không tìm thấy câu hỏi nào trong ảnh. Vui lòng kiểm tra lại ảnh. 🔍"
         )
 
-    # Lưu ảnh gốc vào đĩa
-    ext = Path(file.filename or "image.jpg").suffix or ".jpg"
-    filename = f"{uuid.uuid4().hex}{ext}"
-    save_path = STATIC_DIR / filename
-    save_path.write_bytes(image_bytes)
-    image_url = f"/static/exams/{filename}"
-    
-    logger.info(f"Saved image to {save_path}")
-
-    # Lưu đề gốc
+    # Tạo đề gốc để lấy ID trước
     exam = SourceExam(
         user_id=user.id, 
         title=title or file.filename, 
-        image_url=image_url
+        image_url=""
     )
     db.add(exam)
     db.flush()
+
+    # Lưu ảnh gốc vào thư mục riêng của exam
+    ext = Path(file.filename or "image.jpg").suffix or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    
+    exam_dir = STATIC_DIR / f"user_{user.id}" / f"exam_{exam.id}"
+    exam_dir.mkdir(parents=True, exist_ok=True)
+    
+    save_path = exam_dir / filename
+    save_path.write_bytes(image_bytes)
+    
+    image_url = f"/static/exams/user_{user.id}/exam_{exam.id}/{filename}"
+    exam.image_url = image_url
+    db.flush()
+    
+    logger.info(f"Saved image to {save_path}")
 
     # Lưu từng câu hỏi vào MySQL + Chroma
     for i, q_data in enumerate(parsed, 1):

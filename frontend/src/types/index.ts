@@ -24,11 +24,18 @@ export interface ChatSession {
   messages: Message[]
 }
 
+export interface AnswerBlock {
+  type: 'text' | 'image'
+  content?: string
+  url?: string
+}
+
 export interface Question {
   id: number
   content: string
   topic: string
   difficulty: 'easy' | 'medium' | 'hard'
+  question_type: 'multiple_choice' | 'true_false' | 'fill_in'
   has_image: boolean
   source_image_url: string | null
   created_at: string
@@ -37,6 +44,7 @@ export interface Question {
   next_review_at?: string | null
   interval_days?: number | null
   source_exam_id: number
+  answer_blocks?: AnswerBlock[] | null
 }
 
 export interface SourceExam {

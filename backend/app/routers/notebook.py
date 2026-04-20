@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.notebook import Notebook, NotebookSource, NotebookMindmap
 from app.models.chat import ChatSession, Message
 from app.services.auth_service import get_current_user
-from app.services.document_service import process_pdf, process_web_url, process_youtube_url, chunk_text, embed_notebook_chunks, search_notebook_chunks
+from app.services.document_service import process_pdf, process_web_url, process_youtube_url, chunk_documents, embed_notebook_chunks, search_notebook_chunks
 from app.services.llm_service import grounded_chat, client
 from pydantic import BaseModel
 from typing import List
@@ -113,13 +113,13 @@ async def add_pdf_source(nb_id: int, file: UploadFile = File(...), db: Session =
         shutil.copyfileobj(file.file, f)
         
     try:
-        text = process_pdf(tmp_path)
+        pages = process_pdf(tmp_path)
     except Exception as e:
         raise HTTPException(400, str(e))
     finally:
         os.remove(tmp_path)
         
-    chunks = chunk_text(text)
+    chunks = chunk_documents(pages)
     
     src = NotebookSource(notebook_id=nb_id, source_type="pdf", title=file.filename, chunk_count=len(chunks))
     db.add(src)
@@ -150,7 +150,7 @@ async def add_url_source(nb_id: int, body: UrlSource, db: Session = Depends(get_
     except Exception as e:
         raise HTTPException(400, str(e))
         
-    chunks = chunk_text(text)
+    chunks = chunk_documents(text)
     
     title = url[:50] + "..." if len(url) > 50 else url
     if is_youtube:

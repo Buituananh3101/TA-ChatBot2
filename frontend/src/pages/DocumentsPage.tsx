@@ -3,6 +3,7 @@ import { libraryAPI } from '../services/api'
 import type { Folder, QuestionSet } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
 import { useStudyTracker } from '../hooks/useStudyTracker'
+import { AnswerBlocksToggle } from '../components/AnswerBlocks/AnswerBlocksToggle'
 import { Folder as FolderIcon, ChevronLeft, ChevronRight, Edit2, Trash2, ClipboardList, BookOpen, Inbox, ImageIcon, CheckCircle } from 'lucide-react'
 
 
@@ -559,6 +560,22 @@ export function DocumentsPage() {
                       </div>
                     </div>
                     <MathContent content={q.content} lineHeight={1.8} fontSize={14.5} />
+                    <AnswerBlocksToggle
+                      questionId={q.id}
+                      blocks={q.answer_blocks}
+                      editable={true}
+                      onBlocksChange={(newBlocks) => {
+                        const newQ = { ...q, answer_blocks: newBlocks };
+                        setSelectedSet(prev => prev ? {
+                          ...prev,
+                          questions: prev.questions.map(qu => qu.id === q.id ? newQ : qu)
+                        } : null);
+                        setSets(prev => prev.map(s => s.id === selectedSet.id
+                          ? { ...s, questions: s.questions.map(qu => qu.id === q.id ? newQ : qu) }
+                          : s
+                        ));
+                      }}
+                    />
                   </div>
                 ))}
               </div>

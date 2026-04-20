@@ -4,6 +4,7 @@ import { ImageUpload } from '../components/ImageUpload/ImageUpload'
 import type { SourceExam, Question } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
 import { AddToSetModal } from '../components/Library/AddToSetModal'
+import { AnswerBlocksToggle } from '../components/AnswerBlocks/AnswerBlocksToggle'
 import { useStudyTracker } from '../hooks/useStudyTracker'
 import { Edit2, ImageIcon, PlusCircle } from 'lucide-react'
 
@@ -265,6 +266,11 @@ export function HistoryPage() {
                       </button>
                     </div>
                     <MathContent content={q.content} lineHeight={1.75} />
+                    <AnswerBlocksToggle
+                      questionId={q.id}
+                      blocks={q.answer_blocks}
+                      editable={false}
+                    />
                   </div>
                 ))}
               </div>

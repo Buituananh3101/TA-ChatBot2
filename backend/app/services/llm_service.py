@@ -69,13 +69,13 @@ async def chat(history: list, user_message: str) -> str:
     return response.text
 
 GROUNDED_SYSTEM_PROMPT = """Bạn là trợ lý học tập AI.
-Vui lòng trả lời câu hỏi của người dùng DỰA VÀO CÁC TÀI LIỆU được cung cấp bên dưới.
-Nếu tài liệu không chứa thông tin để trả lời, HÃY TRẢ LỜI RÕ: "Tài liệu không đề cập đến thông tin này."
+Vui lòng ưu tiên trả lời câu hỏi của người dùng DỰA VÀO CÁC TÀI LIỆU được cung cấp bên dưới.
+Nếu tài liệu không chứa đủ thông tin để trả lời, HÃY TRẢ LỜI RÕ RÀNG VỚI NGƯỜI DÙNG RẰNG: "Tài liệu không đề cập đến thông tin này", sau đó tiến hành tổng hợp kiến thức từ Web để trả lời bổ sung.
 Không được bịa đặt thông tin.
 
 QUY TẮC TRÍCH DẪN (QUAN TRỌNG):
-- Khi sử dụng thông tin từ một nguồn nào đó, hãy gắn thẻ trích dẫn [id] ngay lúc đó. Ví dụ: "Theo tài liệu, phương trình bậc 2 có dạng... [1]"
-- Không liệt kê danh sách tài liệu ở cuối. Chỉ dùng trích dẫn inline [id].
+- Khi sử dụng thông tin từ một nguồn tài liệu nào đó, hãy gắn chính xác thẻ trích dẫn của tài liệu đó ngay tại câu. Ví dụ: "Theo tài liệu, phương trình có dạng... [1-5]". Nếu nguồn không có trang: "... [2]".
+- Không liệt kê danh sách tài liệu ở cuối. Chỉ dùng trích dẫn inline ngay tại câu có sử dụng dữ liệu.
 
 QUAN TRỌNG VỀ ĐỊNH DẠNG:
 - Dùng tiếng Việt, ngôn ngữ dễ hiểu.
@@ -91,8 +91,15 @@ async def grounded_chat(history: list, user_message: str, context_chunks: list[d
     for idx, chunk in enumerate(context_chunks):
         source_id = chunk.get("source_id", "unknown")
         text = chunk.get("text", "")
-        # Đánh số ID dựa trên source_id (để tooltip ở frontend map đúng nguồn)
-        context_text += f"\n--- TÀI LIỆU [Nguồn {source_id}] ---\n{text}\n"
+        page_number = chunk.get("page_number")
+        
+        # Format citation compact
+        if page_number:
+            ref_id = f"{source_id}-{page_number}"
+        else:
+            ref_id = f"{source_id}"
+            
+        context_text += f"\n--- TÀI LIỆU [{ref_id}] ---\n{text}\n"
 
     # Gộp context vào câu hỏi của user
     augmented_user_message = f"{context_text}\n\n--- CÂU HỎI CỦA NGƯỜI DÙNG ---\n{user_message}"
@@ -115,6 +122,7 @@ async def grounded_chat(history: list, user_message: str, context_chunks: list[d
             system_instruction=GROUNDED_SYSTEM_PROMPT,
             temperature=0.2, # Nhiệt độ thấp hơn để bám sát tài liệu
             max_output_tokens=2000,
+            tools=[{"google_search": {}}]
         )
     )
     return response.text

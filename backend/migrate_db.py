@@ -9,6 +9,24 @@ def upgrade():
 
     with engine.connect() as conn:
         try:
+            conn.execute(text("ALTER TABLE questions ADD COLUMN answer_blocks JSON DEFAULT NULL;"))
+            print("Added answer_blocks to questions.")
+        except Exception as e:
+            if "Duplicate column name" in str(e):
+                print("Column answer_blocks already exists in questions.")
+            else:
+                print(f"Error adding column: {e}")
+
+        try:
+            conn.execute(text("ALTER TABLE questions ADD COLUMN question_type VARCHAR(20) DEFAULT 'multiple_choice';"))
+            print("Added question_type to questions.")
+        except Exception as e:
+            if "Duplicate column name" in str(e):
+                print("Column question_type already exists in questions.")
+            else:
+                print(f"Error adding column: {e}")
+
+        try:
             # Thêm cột notebook_id vào chat_sessions
             conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN notebook_id INTEGER DEFAULT NULL;"))
             print("Added notebook_id to chat_sessions.")

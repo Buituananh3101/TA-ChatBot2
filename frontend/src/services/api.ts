@@ -51,13 +51,20 @@ export const uploadAPI = {
   },
 }
 
-// ── Problems ──────────────────────────────────────
 export const problemsAPI = {
   listExams: () => api.get('/problems/exams'),
   getExam: (id: number) => api.get(`/problems/exams/${id}`),
   deleteExam: (id: number) => api.delete(`/problems/exams/${id}`),
   updateExam: (id: number, data: { title: string }) => api.put(`/problems/exams/${id}`, data),
   updateQuestion: (id: number, data: { topic: string; difficulty: string }) => api.put(`/problems/questions/${id}`, data),
+  updateAnswerBlocks: (id: number, blocks: any[]) => api.put(`/problems/questions/${id}/answer-blocks`, { blocks }),
+  uploadAnswerImage: (questionId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/problems/questions/${questionId}/answer-image`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
 }
 
 // ── Review ────────────────────────────────────────

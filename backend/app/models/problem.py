@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Boolean, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Boolean, Float, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -33,6 +33,7 @@ class Question(Base):
     difficulty     = Column(Enum("easy", "medium", "hard"), default="medium")
     has_image      = Column(Boolean, default=False)
     chroma_id      = Column(String(100))
+    question_type  = Column(String(20), default='multiple_choice')
 
     # Spaced repetition fields
     last_used_at   = Column(DateTime, nullable=True)
@@ -40,6 +41,8 @@ class Question(Base):
     next_review_at = Column(DateTime, nullable=True)
     interval_days  = Column(Integer, default=1)
     ease_factor    = Column(Float, default=2.5)
+
+    answer_blocks  = Column(JSON, nullable=True)  # Store answer blocks
 
     created_at     = Column(DateTime, server_default=func.now())
 

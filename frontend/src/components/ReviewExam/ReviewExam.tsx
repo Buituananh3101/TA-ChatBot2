@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { reviewAPI } from '../../services/api'
 import type { ReviewExam as ReviewExamType } from '../../types'
 import { MathContent } from '../MathContent/MathContent'
+import { AnswerBlocksToggle } from '../AnswerBlocks/AnswerBlocksToggle'
 import { CheckCircle2, Clock, Frown, Meh, Smile, Laugh } from 'lucide-react'
 
 const TOPICS = ['Đại số', 'Hình học', 'Giải tích', 'Xác suất', 'Lượng giác', 'Tổ hợp']
@@ -207,6 +208,11 @@ export function ReviewExamGenerator() {
 
                   {/* ── Nội dung câu hỏi ── */}
                   <MathContent content={q.content} lineHeight={1.75} fontSize={14.5} />
+                  <AnswerBlocksToggle
+                    questionId={q.id}
+                    blocks={q.answer_blocks}
+                    editable={false}
+                  />
 
                   {/* ── Quality rating (chỉ khi chưa ôn hôm nay) ── */}
                   {!isToday && (

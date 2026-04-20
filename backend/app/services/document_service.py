@@ -10,16 +10,19 @@ def _clean_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-def process_pdf(file_path: str) -> str:
-    """Đọc text từ file PDF"""
+def process_pdf(file_path: str) -> list[dict]:
+    """Đọc text từ file PDF và trả về danh sách các trang"""
     try:
         reader = PdfReader(file_path)
-        full_text = []
+        pages = []
         for i, page in enumerate(reader.pages):
             text = page.extract_text()
             if text:
-                full_text.append(f"--- Trang {i + 1} ---\n{text}")
-        return "\n\n".join(full_text)
+                pages.append({
+                    "text": _clean_text(text),
+                    "page_number": i + 1
+                })
+        return pages
     except Exception as e:
         raise Exception(f"Lỗi khi đọc PDF: {e}")
 
@@ -64,45 +67,75 @@ def process_youtube_url(url: str) -> str:
     except Exception as e:
         raise Exception(f"Lỗi khi lấy phụ đề YouTube (video có thể không có phụ đề): {e}")
 
-def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> list[str]:
-    """Cắt text thành các khối nhỏ (ước tính theo lượng text length).
-    Note: Token size thường tốn ~4 ký tự = 1 token. 
-    chunk_size=2000 chars ~ 500 tokens. overlap=200 chars ~ 50 tokens."""
-    if not text:
+def chunk_documents(docs: list[dict] | str, chunk_size: int = 2000, overlap: int = 200) -> list[dict]:
+    """Cắt text thành các khối nhỏ có kèm metadata."""
+    if not docs:
         return []
         
-    chunks = []
-    text_len = len(text)
+    final_chunks = []
     
-    # Đơn giản hoá: cắt chuỗi the char length với overlap
-    step = chunk_size - overlap
-    if step <= 0:
-        step = chunk_size
+    # Chuẩn hoá đầu vào thành list dict
+    items = []
+    if isinstance(docs, str):
+        items = [{"text": docs, "page_number": None}]
+    else:
+        items = docs
         
-    for i in range(0, text_len, step):
-        chunks.append(text[i:i + chunk_size])
+    for item in items:
+        text = item.get("text", "")
+        page_number = item.get("page_number")
         
-    return chunks
+        if not text:
+            continue
+            
+        text_len = len(text)
+        
+        # Nếu đoạn text nhỏ hơn mức giới hạn, giữ nguyên toàn bộ (không cắt)
+        if text_len <= chunk_size:
+            final_chunks.append({
+                "text": text,
+                "page_number": page_number
+            })
+            continue
+            
+        # Nếu đoạn text dài quá, tiến hành cắt đôi
+        step = chunk_size - overlap
+        if step <= 0:
+            step = chunk_size
+            
+        for i in range(0, text_len, step):
+            chunk_text = text[i:i + chunk_size]
+            final_chunks.append({
+                "text": chunk_text,
+                "page_number": page_number
+            })
+            
+    return final_chunks
 
 from app.chroma_client import notebook_chunks_collection
 
-def embed_notebook_chunks(notebook_id: int, source_id: int, chunks: list[str]):
+def embed_notebook_chunks(notebook_id: int, source_id: int, chunks: list[dict]):
     """Đưa các chunks vào ChromaDB"""
     if not chunks:
         return
         
     ids = [f"n_{notebook_id}_s_{source_id}_chunk_{i}" for i in range(len(chunks))]
-    metadatas = [
-        {
+    documents = [c.get("text", "") for c in chunks]
+    metadatas = []
+    
+    for i, c in enumerate(chunks):
+        meta = {
             "notebook_id": notebook_id,
             "source_id": source_id,
             "chunk_index": i
-        } for i in range(len(chunks))
-    ]
+        }
+        if c.get("page_number") is not None:
+            meta["page_number"] = c["page_number"]
+        metadatas.append(meta)
     
     notebook_chunks_collection.add(
         ids=ids,
-        documents=chunks,
+        documents=documents,
         metadatas=metadatas
     )
 
@@ -136,7 +169,8 @@ def search_notebook_chunks(notebook_id: int, query: str, n: int = 5, active_sour
         chunks.append({
             "text": doc,
             "source_id": meta.get("source_id"),
-            "chunk_index": meta.get("chunk_index")
+            "chunk_index": meta.get("chunk_index"),
+            "page_number": meta.get("page_number")
         })
         
     return chunks
