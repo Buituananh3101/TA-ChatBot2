@@ -9,3 +9,9 @@ questions_collection = client.get_or_create_collection(
     name="questions",
     metadata={"hnsw:space": "cosine"}
 )
+
+# Collection lưu các đoạn văn bản (chunks) từ tài liệu notebook
+notebook_chunks_collection = client.get_or_create_collection(
+    name="notebook_chunks",
+    metadata={"hnsw:space": "cosine"}
+)

@@ -3,6 +3,7 @@ import { libraryAPI } from '../services/api'
 import type { Folder, QuestionSet } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
 import { useStudyTracker } from '../hooks/useStudyTracker'
+import { Folder as FolderIcon, ChevronLeft, ChevronRight, Edit2, Trash2, ClipboardList, BookOpen, Inbox, ImageIcon, CheckCircle } from 'lucide-react'
 
 
 // ── Micro-components ──────────────────────────────────────────────────────────
@@ -287,12 +288,12 @@ export function DocumentsPage() {
         {isFoldersOpen ? (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              {h('📁 Thư mục')}
+              {h('Thư mục')}
               <button
                 onClick={() => setIsFoldersOpen(false)} title="Thu gọn"
-                style={{ background: '#f5f7fb', border: '1px solid #e8ecf2', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', color: '#888', fontSize: 10 }}
+                style={{ display: 'flex', alignItems: 'center', background: '#f5f7fb', border: '1px solid #e8ecf2', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', color: '#888', fontSize: 10 }}
               >
-                ◀
+                <ChevronLeft size={16} />
               </button>
             </div>
 
@@ -315,14 +316,14 @@ export function DocumentsPage() {
                           style={{ flex: 1, fontSize: 13, padding: '2px 6px', borderRadius: 4, border: '1.5px solid #1a56a0', outline: 'none' }}
                         />
                       ) : (
-                        <span style={{ flex: 1, fontSize: 13, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          📁 {folder.name}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, fontSize: 13, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <FolderIcon size={14} color="#1a56a0" /> {folder.name}
                         </span>
                       )}
 
                       <div style={{ display: 'flex', gap: 0, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        <IconBtn title="Đổi tên" onClick={() => { setRenamingFolder(folder.id); setRenameVal(folder.name) }}>✏️</IconBtn>
-                        <IconBtn title="Xoá" danger onClick={() => deleteFolder(folder.id)}>🗑</IconBtn>
+                        <IconBtn title="Đổi tên" onClick={() => { setRenamingFolder(folder.id); setRenameVal(folder.name) }}><Edit2 size={13} /></IconBtn>
+                        <IconBtn title="Xoá" danger onClick={() => deleteFolder(folder.id)}><Trash2 size={13} /></IconBtn>
                       </div>
                     </div>
                   ))
@@ -339,8 +340,8 @@ export function DocumentsPage() {
             onMouseEnter={e => e.currentTarget.style.opacity = '1'}
             onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
           >
-            <span style={{ fontSize: 14 }}>▶</span>
-            <span style={{ fontSize: 18 }}>📁</span>
+            <span style={{ display: 'flex', justifyContent: 'center' }}><ChevronRight size={16} /></span>
+            <span style={{ display: 'flex', justifyContent: 'center' }}><FolderIcon size={20} /></span>
           </button>
         )}
       </div>
@@ -351,12 +352,12 @@ export function DocumentsPage() {
           selectedFolder ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                {h(`📋 Tập trong "${selectedFolder.name}"`)}
+                {h(`Tập trong "${selectedFolder.name}"`)}
                 <button
                   onClick={() => setIsSetsOpen(false)} title="Thu gọn"
-                  style={{ background: '#f5f7fb', border: '1px solid #e8ecf2', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', color: '#888', fontSize: 10 }}
+                  style={{ display: 'flex', alignItems: 'center', background: '#f5f7fb', border: '1px solid #e8ecf2', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', color: '#888', fontSize: 10 }}
                 >
-                  ◀
+                  <ChevronLeft size={16} />
                 </button>
               </div>
 
@@ -377,8 +378,8 @@ export function DocumentsPage() {
                         />
                       ) : (
                         <div style={{ flex: 1, overflow: 'hidden' }}>
-                          <div style={{ fontSize: 13, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            📋 {s.name}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <ClipboardList size={14} color="#1a56a0" /> {s.name}
                           </div>
                           <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
                             {s.questions.length} câu
@@ -387,8 +388,8 @@ export function DocumentsPage() {
                       )}
 
                       <div style={{ display: 'flex', gap: 0, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        <IconBtn title="Đổi tên" onClick={() => { setRenamingSet(s.id); setRenameVal(s.name) }}>✏️</IconBtn>
-                        <IconBtn title="Xoá" danger onClick={() => deleteSet(s.id)}>🗑</IconBtn>
+                        <IconBtn title="Đổi tên" onClick={() => { setRenamingSet(s.id); setRenameVal(s.name) }}><Edit2 size={13} /></IconBtn>
+                        <IconBtn title="Xoá" danger onClick={() => deleteSet(s.id)}><Trash2 size={13} /></IconBtn>
                       </div>
                     </div>
                   ))
@@ -410,8 +411,8 @@ export function DocumentsPage() {
             onMouseEnter={e => e.currentTarget.style.opacity = '1'}
             onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
           >
-            <span style={{ fontSize: 14 }}>▶</span>
-            <span style={{ fontSize: 18 }}>📋</span>
+            <span style={{ display: 'flex', justifyContent: 'center' }}><ChevronRight size={16} /></span>
+            <span style={{ display: 'flex', justifyContent: 'center' }}><ClipboardList size={20} /></span>
           </button>
         )}
       </div>
@@ -420,7 +421,7 @@ export function DocumentsPage() {
       <div style={{ flex: 1, minWidth: 0, height: 'calc(100vh - 60px)', overflowY: 'auto', padding: '16px 20px', background: '#f5f7fb' }}>
         {!selectedSet ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60%', color: '#bbb', gap: 12 }}>
-            <span style={{ fontSize: 48 }}>📖</span>
+            <span style={{ display: 'flex', justifyContent: 'center' }}><BookOpen size={48} strokeWidth={1} /></span>
             <span style={{ fontSize: 14 }}>Chọn một tập câu hỏi để xem nội dung</span>
           </div>
         ) : (
@@ -436,7 +437,7 @@ export function DocumentsPage() {
 
             {selectedSet.questions.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: 60, color: '#bbb', fontSize: 14 }}>
-                <span style={{ fontSize: 36 }}>📭</span>
+                <span style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Inbox size={36} strokeWidth={1.5} /></span>
                 <p>Tập này chưa có câu hỏi nào.<br />Vào <b>Lịch sử đề</b> để thêm câu hỏi.</p>
               </div>
             ) : (
@@ -479,6 +480,7 @@ export function DocumentsPage() {
                           <span
                             title="Câu hỏi này có hình vẽ / đồ thị trong ảnh gốc"
                             style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
                               fontSize: 11,
                               padding: '2px 9px',
                               borderRadius: 20,
@@ -490,7 +492,7 @@ export function DocumentsPage() {
                             }}
                             onClick={() => q.source_image_url && setLightboxUrl(`${API_BASE}${q.source_image_url}`)}
                           >
-                            🖼︎ Có hình vẽ
+                            <ImageIcon size={12} /> Có hình vẽ
                           </span>
                         )}
                         {(() => {
@@ -535,7 +537,9 @@ export function DocumentsPage() {
                                 onMouseEnter={e => !isToday && (e.currentTarget.style.background = '#dce4f2')}
                                 onMouseLeave={e => !isToday && (e.currentTarget.style.background = '#eef2fa')}
                               >
-                                {!isReviewed ? '✅ Chưa từng ôn' : (isToday ? '✅ Hôm nay đã ôn' : '✅ Hôm nay chưa ôn')}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <CheckCircle size={14} /> {!isReviewed ? 'Chưa từng ôn' : (isToday ? 'Hôm nay đã ôn' : 'Hôm nay chưa ôn')}
+                                </span>
                               </button>
                             </>
                           )
@@ -544,12 +548,13 @@ export function DocumentsPage() {
                           title="Xoá khỏi tập"
                           onClick={() => removeQuestion(q.id)}
                           style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
                             background: 'none', border: '1px solid #f0b8b8', borderRadius: 6,
                             color: '#a32d2d', cursor: 'pointer', fontSize: 12,
                             padding: '3px 10px',
                           }}
                         >
-                          🗑 Xoá khỏi tập
+                          <Trash2 size={13} /> Xoá khỏi tập
                         </button>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { libraryAPI } from '../../services/api'
 import type { Folder, QuestionSet } from '../../types'
+import { CheckCircle2, PlusCircle, Folder as FolderIcon, ClipboardList } from 'lucide-react'
 
 interface Props {
   questionId: number
@@ -84,7 +85,7 @@ export function AddToSetModal({ questionId, questionPreview, onClose, onSuccess 
     return (
       <div style={overlay} onClick={onClose}>
         <div style={{ ...card, alignItems: 'center', gap: 12 }} onClick={e => e.stopPropagation()}>
-          <span style={{ fontSize: 40 }}>✅</span>
+          <CheckCircle2 color="#10b981" size={48} />
           <p style={{ margin: 0, fontWeight: 600, color: '#1a56a0', fontSize: 15 }}>
             Đã thêm vào "{selectedSet?.name}"
           </p>
@@ -100,7 +101,7 @@ export function AddToSetModal({ questionId, questionPreview, onClose, onSuccess 
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#1a1a1a' }}>➕ Thêm câu hỏi vào tập</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 16, color: '#1a1a1a' }}><PlusCircle size={18} /> Thêm câu hỏi vào tập</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888' }}>×</button>
         </div>
 
@@ -111,8 +112,8 @@ export function AddToSetModal({ questionId, questionPreview, onClose, onSuccess 
 
         {/* ── Bước 1: Chọn hoặc tạo folder ── */}
         <div>
-          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#1a56a0' }}>
-            📁 Chọn folder
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#1a56a0' }}>
+            <FolderIcon size={14} /> Chọn folder
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
             {folders.length === 0 && (
@@ -121,10 +122,10 @@ export function AddToSetModal({ questionId, questionPreview, onClose, onSuccess 
             {folders.map(f => (
               <button
                 key={f.id}
-                style={pill(selectedFolder?.id === f.id)}
+                style={{ ...pill(selectedFolder?.id === f.id), display: 'flex', alignItems: 'center', gap: 6 }}
                 onClick={() => { setSelectedFolder(f); setSelectedSet(null); setStep('set') }}
               >
-                📁 {f.name}
+                <FolderIcon size={14} /> {f.name}
               </button>
             ))}
           </div>
@@ -133,8 +134,8 @@ export function AddToSetModal({ questionId, questionPreview, onClose, onSuccess 
         {/* ── Bước 2: Chọn hoặc tạo set (hiện khi đã chọn folder) ── */}
         {step === 'set' && selectedFolder && (
           <div>
-            <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#1a56a0' }}>
-              📋 Chọn tập câu hỏi trong "{selectedFolder.name}"
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#1a56a0' }}>
+              <ClipboardList size={14} /> Chọn tập câu hỏi trong "{selectedFolder.name}"
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 140, overflowY: 'auto' }}>
               {sets.length === 0 && (
@@ -143,10 +144,10 @@ export function AddToSetModal({ questionId, questionPreview, onClose, onSuccess 
               {sets.map(s => (
                 <button
                   key={s.id}
-                  style={pill(selectedSet?.id === s.id)}
+                  style={{ ...pill(selectedSet?.id === s.id), display: 'flex', alignItems: 'center', gap: 6 }}
                   onClick={() => setSelectedSet(s)}
                 >
-                  📋 {s.name}
+                  <ClipboardList size={14} /> {s.name}
                 </button>
               ))}
             </div>

@@ -5,6 +5,7 @@ import type { SourceExam, Question } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
 import { AddToSetModal } from '../components/Library/AddToSetModal'
 import { useStudyTracker } from '../hooks/useStudyTracker'
+import { Edit2, ImageIcon, PlusCircle } from 'lucide-react'
 
 
 // Base URL của API backend để cấu tạo URL ảnh tửủ đường dẫn tương đối
@@ -171,10 +172,10 @@ export function HistoryPage() {
                       <h2 style={{ margin: 0, color: '#1a56a0' }}>{selected.title || `Đề #${selected.id}`}</h2>
                       <button
                         onClick={() => { setTitleInput(selected.title || `Đề #${selected.id}`); setEditingTitle(true) }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 16 }}
+                        style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 16 }}
                         title="Chỉnh sửa tên đề"
                       >
-                        ✏️
+                        <Edit2 size={16} />
                       </button>
                     </div>
                   )}
@@ -188,12 +189,13 @@ export function HistoryPage() {
                     <button
                       onClick={() => setLightboxUrl(`${API_BASE}${selected.image_url}`)}
                       style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
                         padding: '6px 14px', borderRadius: 6,
                         border: '1px solid #a3c4f5', background: '#eef2fa',
                         color: '#1a56a0', cursor: 'pointer', fontSize: 13,
                       }}
                     >
-                      🖼︎ Xem ảnh gốc
+                      <ImageIcon size={14} /> Xem ảnh gốc
                     </button>
                   )}
                   <button onClick={() => handleDelete(selected.id)} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #e24b4a', background: '#fff', color: '#a32d2d', cursor: 'pointer', fontSize: 13 }}>
@@ -235,6 +237,7 @@ export function HistoryPage() {
                         <span
                           title="Câu hỏi này có hình vẽ / đồ thị trong ảnh gốc"
                           style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
                             fontSize: 11, padding: '2px 9px', borderRadius: 12,
                             background: '#fff7e6', color: '#b06000',
                             border: '1px solid #ffd591', fontWeight: 500,
@@ -242,7 +245,7 @@ export function HistoryPage() {
                           }}
                           onClick={() => selected.image_url && setLightboxUrl(`${API_BASE}${selected.image_url}`)}
                         >
-                          🖼︎ Có hình vẽ
+                          <ImageIcon size={12} /> Có hình vẽ
                         </span>
                       )}
 
@@ -251,13 +254,14 @@ export function HistoryPage() {
                         title="Thêm câu hỏi này vào một tập câu hỏi"
                         onClick={() => setAddToSetQ(q)}
                         style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
                           marginLeft: 'auto',
                           padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
                           border: '1px solid #a3c4f5', background: '#eef2fa',
                           color: '#1a56a0', cursor: 'pointer',
                         }}
                       >
-                        ➕ Tập
+                        <PlusCircle size={14} /> Tập
                       </button>
                     </div>
                     <MathContent content={q.content} lineHeight={1.75} />

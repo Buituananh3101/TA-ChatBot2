@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { reviewAPI } from '../../services/api'
 import type { ReviewExam as ReviewExamType } from '../../types'
 import { MathContent } from '../MathContent/MathContent'
+import { CheckCircle2, Clock, Frown, Meh, Smile, Laugh } from 'lucide-react'
 
 const TOPICS = ['Đại số', 'Hình học', 'Giải tích', 'Xác suất', 'Lượng giác', 'Tổ hợp']
 const DIFFICULTY_LABEL: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' }
@@ -9,10 +10,10 @@ const DIFFICULTY_COLOR: Record<string, string> = { easy: '#0f6e56', medium: '#85
 
 // ── Quality rating buttons ─────────────────────────────────────────────────
 const QUALITY_OPTIONS = [
-  { value: 0, label: '😵 Quên', color: '#a32d2d', bg: '#fdf0f0' },
-  { value: 2, label: '😕 Khó',  color: '#854f0b', bg: '#fef9ec' },
-  { value: 3, label: '🙂 Ổn',   color: '#1a56a0', bg: '#eef2fa' },
-  { value: 5, label: '😎 Dễ',   color: '#0f6e56', bg: '#e8f5ee' },
+  { value: 0, label: <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Frown size={14} /> Quên</span>, color: '#a32d2d', bg: '#fdf0f0' },
+  { value: 2, label: <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Meh size={14} /> Khó</span>,  color: '#854f0b', bg: '#fef9ec' },
+  { value: 3, label: <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Smile size={14} /> Ổn</span>,   color: '#1a56a0', bg: '#eef2fa' },
+  { value: 5, label: <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Laugh size={14} /> Dễ</span>,   color: '#0f6e56', bg: '#e8f5ee' },
 ]
 
 function formatNextReview(dateStr: string | null | undefined, intervalDays: number): string {
@@ -177,11 +178,12 @@ export function ReviewExamGenerator() {
                     {/* next_review_at badge */}
                     {q.next_review_at && (
                       <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
                         fontSize: 11, padding: '2px 10px', borderRadius: 12,
                         background: '#f0f4fa', color: '#6366f1',
                         border: '1px solid #c7d2fe',
                       }}>
-                        ⏰ {formatNextReview(q.next_review_at, q.interval_days ?? 1)}
+                        <Clock size={12} /> {formatNextReview(q.next_review_at, q.interval_days ?? 1)}
                       </span>
                     )}
 
@@ -231,21 +233,23 @@ export function ReviewExamGenerator() {
                       <button
                         onClick={() => handleMarkReviewed(q.id)}
                         style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
                           marginLeft: 'auto', padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
                           background: '#1a56a0', color: '#fff', border: 'none', cursor: 'pointer',
                         }}
                       >
-                        ✅ Xác nhận ôn
+                        <CheckCircle2 size={14} /> Xác nhận ôn
                       </button>
                     </div>
                   )}
 
                   {isToday && (
                     <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
                       marginTop: 10, paddingTop: 8, borderTop: '1px solid #f0f0f0',
                       fontSize: 12, color: '#0f6e56', fontWeight: 600,
                     }}>
-                      ✅ Hôm nay đã ôn
+                      <CheckCircle2 size={14} /> Hôm nay đã ôn
                       {q.next_review_at && (
                         <span style={{ color: '#6366f1', fontWeight: 400, marginLeft: 8 }}>
                           · {formatNextReview(q.next_review_at, q.interval_days ?? 1)}

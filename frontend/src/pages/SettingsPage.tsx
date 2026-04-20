@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { messengerAPI } from '../services/api'
+import { Settings, MessageCircle, CheckCircle2, XCircle, AlertTriangle, PartyPopper, ClipboardList, Unlink, Bell, Calendar, BookOpen, Zap } from 'lucide-react'
 
 export function SettingsPage() {
   const [messengerLinked, setMessengerLinked] = useState(false)
@@ -25,9 +26,9 @@ export function SettingsPage() {
       await messengerAPI.unlink()
       setMessengerLinked(false)
       setMessengerPsid(null)
-      setMessage('✅ Đã hủy liên kết Messenger thành công!')
+      setMessage('[OK] Đã hủy liên kết Messenger thành công!')
     } catch {
-      setMessage('❌ Có lỗi xảy ra khi hủy liên kết.')
+      setMessage('[ERR] Có lỗi xảy ra khi hủy liên kết.')
     } finally {
       setUnlinking(false)
       setTimeout(() => setMessage(''), 4000)
@@ -36,8 +37,8 @@ export function SettingsPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: '#1a1a1a' }}>
-        ⚙️ Cài đặt
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 24, fontWeight: 700, marginBottom: 8, color: '#1a1a1a' }}>
+        <Settings size={26} strokeWidth={2.5} /> Cài đặt
       </h1>
       <p style={{ color: '#666', marginBottom: 32, fontSize: 14 }}>
         Quản lý tài khoản và tích hợp bên ngoài
@@ -57,9 +58,9 @@ export function SettingsPage() {
             width: 44, height: 44, borderRadius: 10,
             background: 'linear-gradient(135deg, #0084ff, #00c6ff)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22,
+            color: '#fff'
           }}>
-            💬
+            <MessageCircle size={24} />
           </div>
           <div>
             <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0, color: '#1a1a1a' }}>
@@ -79,17 +80,19 @@ export function SettingsPage() {
               </span>
             ) : messengerLinked ? (
               <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '4px 12px', fontSize: 12, borderRadius: 20, fontWeight: 600,
                 background: '#e8f5e9', color: '#2e7d32',
               }}>
-                ✅ Đã liên kết
+                <CheckCircle2 size={14} /> Đã liên kết
               </span>
             ) : (
               <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '4px 12px', fontSize: 12, borderRadius: 20, fontWeight: 600,
                 background: '#fff3e0', color: '#e65100',
               }}>
-                ⚠️ Chưa liên kết
+                <AlertTriangle size={14} /> Chưa liên kết
               </span>
             )}
           </div>
@@ -101,8 +104,8 @@ export function SettingsPage() {
         }}>
           {messengerLinked ? (
             <>
-              <p style={{ margin: '0 0 6px', fontWeight: 500 }}>
-                🎉 Tài khoản đã liên kết với Messenger!
+              <p style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 6px', fontWeight: 500 }}>
+                <PartyPopper size={16} /> Tài khoản đã liên kết với Messenger!
               </p>
               <p style={{ margin: 0, fontSize: 12, color: '#888' }}>
                 PSID: <code style={{ background: '#eee', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>
@@ -117,8 +120,8 @@ export function SettingsPage() {
             </>
           ) : (
             <>
-              <p style={{ margin: '0 0 8px', fontWeight: 500 }}>
-                📋 Hướng dẫn liên kết Messenger:
+              <p style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 8px', fontWeight: 500 }}>
+                <ClipboardList size={16} /> Hướng dẫn liên kết Messenger:
               </p>
               <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
                 <li style={{ marginBottom: 4 }}>
@@ -130,8 +133,8 @@ export function SettingsPage() {
                 <li style={{ marginBottom: 4 }}>
                   Bot sẽ yêu cầu bạn gõ <b>email đã đăng ký</b> trên hệ thống
                 </li>
-                <li>
-                  Sau khi xác nhận, bạn sẽ nhận thông báo ôn tập hàng ngày! 🎉
+                <li style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  Sau khi xác nhận, bạn sẽ nhận thông báo ôn tập hàng ngày! <PartyPopper size={14} />
                 </li>
               </ol>
             </>
@@ -143,6 +146,7 @@ export function SettingsPage() {
             onClick={handleUnlink}
             disabled={unlinking}
             style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 20px',
               borderRadius: 8,
               border: '1px solid #e53935',
@@ -165,18 +169,20 @@ export function SettingsPage() {
               (e.target as HTMLButtonElement).style.color = '#e53935';
             }}
           >
-            {unlinking ? 'Đang hủy...' : '🔗 Hủy liên kết Messenger'}
+            {unlinking ? 'Đang hủy...' : <><Unlink size={15} /> Hủy liên kết Messenger</>}
           </button>
         )}
 
         {message && (
           <p style={{
+            display: 'flex', alignItems: 'center', gap: 8,
             marginTop: 12, fontSize: 13, fontWeight: 500,
-            color: message.startsWith('✅') ? '#2e7d32' : '#e53935',
+            color: message.startsWith('[OK]') ? '#2e7d32' : '#e53935',
             padding: '8px 12px', borderRadius: 6,
-            background: message.startsWith('✅') ? '#e8f5e9' : '#ffebee',
+            background: message.startsWith('[OK]') ? '#e8f5e9' : '#ffebee',
           }}>
-            {message}
+            {message.startsWith('[OK]') ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+            {message.replace(/^\[(OK|ERR)\]\s*/, '')}
           </p>
         )}
       </div>
@@ -194,9 +200,9 @@ export function SettingsPage() {
             width: 44, height: 44, borderRadius: 10,
             background: 'linear-gradient(135deg, #ff9800, #ff5722)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22,
+            color: '#fff'
           }}>
-            🔔
+            <Bell size={24} />
           </div>
           <div>
             <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0, color: '#1a1a1a' }}>
@@ -212,14 +218,14 @@ export function SettingsPage() {
           background: '#f8f9fb', borderRadius: 8, padding: 16,
           fontSize: 13.5, lineHeight: 1.7, color: '#444',
         }}>
-          <p style={{ margin: '0 0 10px' }}>
-            📅 <b>Lịch nhắc nhở:</b> Mỗi ngày lúc 8:00 sáng (giờ Việt Nam)
+          <p style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
+            <Calendar size={16} /> <span><b>Lịch nhắc nhở:</b> Mỗi ngày lúc 8:00 sáng (giờ Việt Nam)</span>
           </p>
-          <p style={{ margin: '0 0 10px' }}>
-            📚 <b>Nội dung:</b> Thông báo số câu hỏi đến hạn ôn tập và gợi ý luyện tập
+          <p style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
+            <BookOpen size={16} /> <span><b>Nội dung:</b> Thông báo số câu hỏi đến hạn ôn tập và gợi ý luyện tập</span>
           </p>
-          <p style={{ margin: 0 }}>
-            ⚡ <b>Cách hoạt động:</b> n8n quét database → Kiểm tra câu đến hạn → Gửi thông báo qua Messenger
+          <p style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+            <Zap size={16} /> <span><b>Cách hoạt động:</b> n8n quét database → Kiểm tra câu → Gửi qua Messenger</span>
           </p>
         </div>
       </div>

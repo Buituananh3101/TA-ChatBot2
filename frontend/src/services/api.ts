@@ -96,4 +96,28 @@ export const messengerAPI = {
   unlink: () => api.post('/auth/unlink-messenger'),
 }
 
+// ── Notebook ──────────────────────────────────────────
+export const notebookAPI = {
+  listNotebooks: () => api.get('/notebook/'),
+  createNotebook: (title: string) => api.post('/notebook/', { title }),
+  getNotebook: (id: number) => api.get(`/notebook/${id}`),
+  renameNotebook: (id: number, title: string) => api.patch(`/notebook/${id}`, { title }),
+  deleteNotebook: (id: number) => api.delete(`/notebook/${id}`),
+
+  addPdfSource: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/notebook/${id}/sources/pdf`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  addUrlSource: (id: number, url: string) => api.post(`/notebook/${id}/sources/url`, { url }),
+  deleteSource: (id: number, sourceId: number) => api.delete(`/notebook/${id}/sources/${sourceId}`),
+
+  getMessages: (id: number) => api.get(`/notebook/${id}/messages`),
+  sendChat: (id: number, message: string, activeSources?: number[]) => api.post(`/notebook/${id}/chat`, { message, active_sources: activeSources }),
+
+  generateMindmap: (id: number, title: string) => api.post(`/notebook/${id}/mindmaps/generate`, { title }),
+  updateMindmap: (id: number, mmId: number, data: any) => api.put(`/notebook/${id}/mindmaps/${mmId}`, { data }),
+  deleteMindmap: (id: number, mmId: number) => api.delete(`/notebook/${id}/mindmaps/${mmId}`),
+}
+
 export default api

@@ -34,6 +34,8 @@ export interface Question {
   created_at: string
   last_used_at: string | null
   review_count: number
+  next_review_at?: string | null
+  interval_days?: number | null
   source_exam_id: number
 }
 
@@ -66,3 +68,29 @@ export interface Folder {
   created_at: string
   question_sets: QuestionSet[]
 }
+
+// ── Notebook Types ───────────────────────────────
+
+export interface NotebookSource {
+  id: number
+  source_type: 'pdf' | 'web' | 'youtube'
+  title: string
+  url?: string
+  chunk_count: number
+  created_at: string
+}
+
+export interface NotebookMindmap {
+  id: number
+  title: string
+  data: any // JSON structure for ReactFlow
+}
+
+export interface Notebook {
+  id: number
+  title: string
+  created_at: string
+  sources: NotebookSource[]
+  mindmaps?: NotebookMindmap[]
+}
+

@@ -39,7 +39,7 @@ const TOPIC_COLORS: Record<string, string> = {
 const DIFF_COLOR: Record<string, string> = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444' }
 const DIFF_LABEL: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' }
 const PAGE_LABEL: Record<string, string> = {
-  chat: '💬 Chat', review: '📋 Ôn tập', history: '📂 Lịch sử',
+  notebook: '📓 Notebook', chat: '📓 Notebook', review: '📋 Ôn tập', history: '📂 Lịch sử',
   documents: '📁 Tài liệu', stats: '📊 Thống kê',
 }
 
@@ -168,7 +168,16 @@ export function StatsPage() {
   const totalMins = data.total_study_minutes % 60
 
   const dailyTimeData = (data.daily_time || []).map(d => ({ label: d.label, count: d.minutes }))
-  const pageTimeArr = Object.entries(data.page_time || {})
+  // Gộp chat (cũ) + notebook (mới) thành 1 dòng
+  const rawPageTime = { ...(data.page_time || {}) }
+  if (rawPageTime.chat && rawPageTime.notebook) {
+    rawPageTime.notebook += rawPageTime.chat
+    delete rawPageTime.chat
+  } else if (rawPageTime.chat && !rawPageTime.notebook) {
+    rawPageTime.notebook = rawPageTime.chat
+    delete rawPageTime.chat
+  }
+  const pageTimeArr = Object.entries(rawPageTime)
     .map(([page, minutes]) => ({ page, minutes }))
     .sort((a, b) => b.minutes - a.minutes)
 

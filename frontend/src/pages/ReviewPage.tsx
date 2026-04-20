@@ -4,6 +4,7 @@ import { ReviewExamGenerator } from '../components/ReviewExam/ReviewExam'
 import type { ReviewExam } from '../types'
 import { MathContent } from '../components/MathContent/MathContent'
 import { useStudyTracker } from '../hooks/useStudyTracker'
+import { Edit2, ClipboardList, Flame, FileText, Trash2, ImageIcon, CheckCircle } from 'lucide-react'
 
 
 const DIFFICULTY_LABEL: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' }
@@ -135,7 +136,9 @@ export function ReviewPage() {
                 transition: 'color 0.15s',
               }}
             >
-              {t === 'generate' ? '✏️  Tạo đề ôn mới' : t === 'history' ? '📋  Đề đã tạo' : '🔥  Câu hỏi cần ôn'}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {t === 'generate' ? <><Edit2 size={16} /> Tạo đề ôn mới</> : t === 'history' ? <><ClipboardList size={16} /> Đề đã tạo</> : <><Flame size={16} /> Câu hỏi cần ôn</>}
+              </span>
             </button>
           ))}
         </div>
@@ -228,7 +231,7 @@ export function ReviewPage() {
                     gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: 36 }}>📄</span>
+                  <span style={{ display: 'flex', justifyContent: 'center' }}><FileText size={40} strokeWidth={1} /></span>
                   Chọn một đề bên trái để xem nội dung
                 </div>
               ) : (
@@ -268,7 +271,7 @@ export function ReviewPage() {
                         opacity: deleting ? 0.6 : 1,
                       }}
                     >
-                      🗑 Xoá đề
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Trash2 size={13} /> Xoá đề</span>
                     </button>
                   </div>
 
@@ -352,7 +355,7 @@ export function ReviewPage() {
                               }}
                               onClick={() => q.source_image_url && setLightboxUrl(`${API_BASE}${q.source_image_url}`)}
                             >
-                              🖼︎ Có hình vẽ
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><ImageIcon size={12} /> Có hình vẽ</span>
                             </span>
                           )}
 
@@ -386,7 +389,7 @@ export function ReviewPage() {
                                     onMouseEnter={e => !isToday && (e.currentTarget.style.background = '#dce4f2')}
                                     onMouseLeave={e => !isToday && (e.currentTarget.style.background = '#eef2fa')}
                                   >
-                                    {!isReviewed ? '✅ Chưa từng ôn' : (isToday ? '✅ Hôm nay đã ôn' : '✅ Hôm nay chưa ôn')}
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={14} /> {!isReviewed ? 'Chưa từng ôn' : (isToday ? 'Hôm nay đã ôn' : 'Hôm nay chưa ôn')}</span>
                                   </button>
                                 </>
                               )
@@ -498,7 +501,7 @@ export function ReviewPage() {
                               onMouseEnter={e => !isToday && (e.currentTarget.style.background = '#dce4f2')}
                               onMouseLeave={e => !isToday && (e.currentTarget.style.background = '#eef2fa')}
                             >
-                              {!isReviewed ? '✅ Chưa từng ôn' : (isToday ? '✅ Hôm nay đã ôn' : '✅ Hôm nay chưa ôn')}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={14} /> {!isReviewed ? 'Chưa từng ôn' : (isToday ? 'Hôm nay đã ôn' : 'Hôm nay chưa ôn')}</span>
                             </button>
                           </>
                         )
