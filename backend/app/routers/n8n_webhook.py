@@ -77,11 +77,16 @@ def _build_advanced_query(db: Session, user_id: int, intent: dict):
     """
     Xây dựng query nâng cao dựa trên intent đã parse.
     Hỗ trợ:
-      - sort_by: due_date, oldest_review, least_reviewed, most_reviewed, newest, oldest
+      - sort_by: due_date, oldest_review, least_reviewed, most_reviewed, newest, oldest, random
       - days: câu chưa ôn ít nhất X ngày
       - days_exact: câu ôn chính xác X ngày trước
       - days_min + days_max: câu ôn trong khoảng X-Y ngày trước
       - difficulty: easy, medium, hard
+      - never_reviewed: chỉ lấy câu chưa ôn lần nào (review_count == 0)
+      - topic: lọc theo chủ đề
+      - overdue: chỉ lấy câu quá hạn
+      - max_review_count: câu ôn ít hơn X lần
+      - exact_review_count: câu ôn đúng X lần
     """
     num = min(intent.get("num", 5), 20)
     sort_by = intent.get("sort_by", "due_date")
@@ -90,6 +95,11 @@ def _build_advanced_query(db: Session, user_id: int, intent: dict):
     days_min = intent.get("days_min")
     days_max = intent.get("days_max")
     difficulty = intent.get("difficulty")
+    never_reviewed = intent.get("never_reviewed", False)
+    topic = intent.get("topic")
+    overdue = intent.get("overdue", False)
+    max_review_count = intent.get("max_review_count")
+    exact_review_count = intent.get("exact_review_count")
 
     now = datetime.utcnow()
 
@@ -99,13 +109,35 @@ def _build_advanced_query(db: Session, user_id: int, intent: dict):
         .filter(Question.user_id == user_id)
     )
 
+    # ── Filter: chưa ôn lần nào ──────────────────────────────────────────────
+    if never_reviewed:
+        query = query.filter(Question.review_count == 0)
+
+    # ── Filter: ôn đúng X lần ────────────────────────────────────────────────
+    if exact_review_count is not None and isinstance(exact_review_count, (int, float)):
+        query = query.filter(Question.review_count == int(exact_review_count))
+
+    # ── Filter: ôn ít hơn X lần ──────────────────────────────────────────────
+    elif max_review_count is not None and isinstance(max_review_count, (int, float)):
+        query = query.filter(Question.review_count < int(max_review_count))
+
+    # ── Filter: quá hạn ──────────────────────────────────────────────────────
+    if overdue:
+        query = query.filter(
+            Question.next_review_at != None,
+            Question.next_review_at < now
+        )
+
     # ── Filter theo difficulty ───────────────────────────────────────────────
     if difficulty and difficulty in ("easy", "medium", "hard"):
         query = query.filter(Question.difficulty == difficulty)
 
+    # ── Filter theo topic ────────────────────────────────────────────────────
+    if topic and isinstance(topic, str) and topic.strip():
+        query = query.filter(Question.topic.ilike(f"%{topic.strip()}%"))
+
     # ── Filter theo ngày ─────────────────────────────────────────────────────
     if days_exact is not None and isinstance(days_exact, (int, float)) and days_exact >= 0:
-        # Chính xác X ngày trước: last_used_at nằm trong ngày đó
         day_start = (now - timedelta(days=int(days_exact))).replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
         query = query.filter(
@@ -113,13 +145,10 @@ def _build_advanced_query(db: Session, user_id: int, intent: dict):
             Question.last_used_at < day_end
         )
     elif days_min is not None and days_max is not None:
-        # Khoảng: ôn cách đây từ days_min đến days_max ngày
-        # days_min (gần hơn) → cutoff xa hơn trong thời gian
-        # days_max (xa hơn) → cutoff gần hơn trong thời gian
         d_min = int(days_min) if isinstance(days_min, (int, float)) else 0
         d_max = int(days_max) if isinstance(days_max, (int, float)) else 0
         if d_min > d_max:
-            d_min, d_max = d_max, d_min  # Swap nếu user nói ngược
+            d_min, d_max = d_max, d_min
         range_start = (now - timedelta(days=d_max)).replace(hour=0, minute=0, second=0, microsecond=0)
         range_end = (now - timedelta(days=d_min)).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         query = query.filter(
@@ -127,14 +156,13 @@ def _build_advanced_query(db: Session, user_id: int, intent: dict):
             Question.last_used_at < range_end
         )
     elif days > 0:
-        # Legacy: câu chưa ôn ít nhất X ngày
         cutoff = now - timedelta(days=days)
         query = query.filter(
             (Question.last_used_at == None) | (Question.last_used_at <= cutoff)
         )
     else:
-        # Mặc định: chỉ áp dụng due filter nếu sort_by là due_date
-        if sort_by == "due_date":
+        # Mặc định: chỉ áp dụng due filter nếu sort_by là due_date và không có filter đặc biệt
+        if sort_by == "due_date" and not never_reviewed and not overdue:
             yesterday = now - timedelta(days=1)
             query = query.filter(
                 (
@@ -144,25 +172,22 @@ def _build_advanced_query(db: Session, user_id: int, intent: dict):
                 ) | (Question.next_review_at <= now)
             )
 
-    # ── Sắp xếp (MySQL-compatible, không dùng NULLS FIRST) ─────────────────
-    # MySQL mặc định: ASC → NULLs đứng đầu, nên chỉ cần .asc() là đủ.
-    if sort_by == "oldest_review":
-        # Câu chưa ôn lâu nhất: NULL first (chưa bao giờ ôn), rồi cũ nhất
+    # ── Sắp xếp ─────────────────────────────────────────────────────────────
+    if sort_by == "random":
+        query = query.order_by(func.rand())
+    elif sort_by == "oldest_review":
         query = query.order_by(Question.last_used_at.asc())
     elif sort_by == "least_reviewed":
-        # Câu ôn ít lần nhất
         query = query.order_by(Question.review_count.asc())
     elif sort_by == "most_reviewed":
-        # Câu ôn nhiều lần nhất
         query = query.order_by(Question.review_count.desc())
     elif sort_by == "newest":
-        # Câu mới thêm nhất
         query = query.order_by(Question.created_at.desc())
     elif sort_by == "oldest":
-        # Câu cũ nhất
         query = query.order_by(Question.created_at.asc())
+    elif sort_by == "overdue_first":
+        query = query.order_by(Question.next_review_at.asc())
     else:
-        # due_date (mặc định)
         query = query.order_by(
             Question.next_review_at.asc(),
             Question.last_used_at.asc()
@@ -425,6 +450,9 @@ def _default_intent(**overrides) -> dict:
         "sort_by": "due_date", "days": 0,
         "days_exact": None, "days_min": None, "days_max": None,
         "difficulty": None,
+        "never_reviewed": False, "topic": None,
+        "overdue": False, "max_review_count": None,
+        "exact_review_count": None,
     }
     base.update(overrides)
     return base
@@ -434,7 +462,6 @@ def _parse_intent_fallback(text: str) -> dict:
     """
     Fallback: phân tích ý định bằng regex khi n8n AI không khả dụng.
     Trả về dict tương thích với response format của n8n AI.
-    Hỗ trợ: sort_by, days_exact, days_min/max, difficulty.
     """
     text_lower = text.lower().strip()
 
@@ -446,15 +473,26 @@ def _parse_intent_fallback(text: str) -> dict:
     if any(k in text_lower for k in ["help", "hướng dẫn", "giúp", "lệnh", "hỗ trợ", "menu"]):
         return _default_intent(
             reply="📚 Hướng dẫn sử dụng:\n\n"
+                  "📝 Ôn tập:\n"
                   "• 'gửi 5 câu chưa ôn' → Nhận 5 câu cần ôn\n"
                   "• '5 câu chưa ôn lâu nhất' → Câu lâu chưa ôn nhất\n"
                   "• '3 câu ôn ít nhất' → Câu ôn ít lần nhất\n"
                   "• '3 câu ôn nhiều nhất' → Câu ôn nhiều lần nhất\n"
+                  "• 'câu chưa ôn lần nào' → Câu review_count = 0\n"
+                  "• 'câu quá hạn' → Câu đã quá deadline\n"
+                  "• '5 câu ngẫu nhiên' → Random câu hỏi\n\n"
+                  "🔍 Lọc nâng cao:\n"
+                  "• '5 câu khó chưa ôn' → Lọc theo độ khó\n"
+                  "• 'câu về đại số' → Lọc theo chủ đề\n"
+                  "• 'câu ôn dưới 3 lần' → Câu ôn ít hơn X lần\n"
+                  "• 'tất cả câu' → Lấy toàn bộ (max 20)\n\n"
+                  "📅 Theo thời gian:\n"
                   "• '3 câu ôn chính xác cách đây 2 ngày'\n"
                   "• '3 câu ôn cách đây từ 5 đến 7 ngày'\n"
-                  "• '5 câu khó chưa ôn' → Lọc theo độ khó\n"
-                  "• 'mấy câu mới thêm' → Câu vừa thêm gần đây\n"
+                  "• 'câu mới thêm' → Câu vừa thêm gần đây\n\n"
+                  "📊 Khác:\n"
                   "• 'thống kê' → Xem số câu cần ôn\n"
+                  "• 'hôm nay ôn mấy câu' → Đã ôn hôm nay\n"
                   "• 'hướng dẫn' → Hiện menu này",
         )
 
@@ -475,13 +513,91 @@ def _parse_intent_fallback(text: str) -> dict:
     elif any(k in text_lower for k in ["trung bình", "medium", "tb"]):
         difficulty = "medium"
 
+    # ── Extract topic ────────────────────────────────────────────────────────
+    topic = None
+    topic_match = re.search(
+        r"(?:về|chủ\s*đề|topic|môn|phần)\s+([a-zA-ZÀ-ỹ\s]{2,30})",
+        text_lower,
+    )
+    if topic_match:
+        topic = topic_match.group(1).strip()
+
+    day_match = re.search(r"(\d+)\s*(?:ngày|hôm)", text_lower)
+
+    # ── NEW: "hôm nay ôn mấy câu" / "đã ôn hôm nay" ─────────────────────────
+    if re.search(r"(?:hôm\s*nay\s*(?:ôn|làm|review)|(?:ôn|làm|review)\s*(?:được\s*)?(?:mấy|bao\s*nhiêu)?\s*(?:câu\s*)?hôm\s*nay|đã\s*ôn\s*hôm\s*nay)", text_lower):
+        return _default_intent(action="get_stats_today")
+
+    # ── NEW: "chưa ôn lần nào" / "chưa bao giờ ôn" / "chưa từng ôn" ─────────
+    if re.search(r"(?:chưa\s*(?:ôn|làm|review)\s*(?:lần\s*nào|bao\s*giờ)|chưa\s*từng\s*(?:ôn|làm|review)|review_count\s*=?\s*0|chưa\s*bao\s*giờ\s*ôn)", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu chưa ôn lần nào...",
+            action="get_questions", num=n,
+            never_reviewed=True, difficulty=difficulty, topic=topic,
+        )
+
+    # ── NEW: "quá hạn" / "trễ hạn" / "overdue" ──────────────────────────────
+    if re.search(r"(?:quá\s*hạn|trễ\s*hạn|overdue|hết\s*hạn|muộn)", text_lower):
+        n = min(num or 10, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu quá hạn ôn tập...",
+            action="get_questions", num=n,
+            overdue=True, sort_by="overdue_first", difficulty=difficulty, topic=topic,
+        )
+
+    # ── NEW: "ngẫu nhiên" / "random" / "bất kỳ" ──────────────────────────────
+    if re.search(r"(?:ngẫu\s*nhiên|random|bất\s*kỳ|xáo\s*trộn|trộn)", text_lower):
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"🎲 Đang lấy {n} câu ngẫu nhiên...",
+            action="get_questions", num=n,
+            sort_by="random", difficulty=difficulty, topic=topic,
+        )
+
+    # ── NEW: "đã ôn X lần" / "ôn đúng X lần" / "ôn được X lần" ────────────────
+    exact_rc_match = re.search(
+        r"(?:đã\s*ôn|ôn\s*(?:đúng|được|rồi)|review)\s*(\d+)\s*lần",
+        text_lower,
+    )
+    if exact_rc_match:
+        exact_rc = int(exact_rc_match.group(1))
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu đã ôn {exact_rc} lần...",
+            action="get_questions", num=n,
+            exact_review_count=exact_rc, difficulty=difficulty, topic=topic,
+        )
+
+    # ── NEW: "ôn dưới X lần" / "ôn ít hơn X lần" / "chưa đến X lần" ─────────
+    review_count_match = re.search(
+        r"(?:ôn\s*(?:dưới|ít\s*hơn|chưa\s*(?:đến|tới|được))|(?:dưới|ít\s*hơn|chưa\s*(?:đến|tới))\s*)\s*(\d+)\s*lần",
+        text_lower,
+    )
+    if review_count_match:
+        max_rc = int(review_count_match.group(1))
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu ôn dưới {max_rc} lần...",
+            action="get_questions", num=n,
+            max_review_count=max_rc, difficulty=difficulty, topic=topic,
+        )
+
+    # ── NEW: "tất cả câu" / "toàn bộ" / "all" ───────────────────────────────
+    if re.search(r"(?:tất\s*cả|toàn\s*bộ|hết|all)\s*(?:câu|bài)?", text_lower):
+        return _default_intent(
+            reply="📝 Đang lấy toàn bộ câu hỏi (tối đa 20)...",
+            action="get_questions", num=20,
+            sort_by="newest", difficulty=difficulty, topic=topic,
+        )
+
     # ── Pattern: "chưa ôn lâu nhất" / "lâu nhất chưa ôn" ────────────────────
     if re.search(r"(?:chưa\s*ôn\s*lâu|lâu\s*(?:nhất)?\s*chưa\s*ôn|lâu\s*nhất)", text_lower):
         n = min(num or 5, 20)
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu chưa ôn lâu nhất...",
             action="get_questions", num=n,
-            sort_by="oldest_review", difficulty=difficulty,
+            sort_by="oldest_review", difficulty=difficulty, topic=topic,
         )
 
     # ── Pattern: "ôn ít nhất" / "ít lần nhất" ────────────────────────────────
@@ -490,7 +606,7 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu ôn ít lần nhất...",
             action="get_questions", num=n,
-            sort_by="least_reviewed", difficulty=difficulty,
+            sort_by="least_reviewed", difficulty=difficulty, topic=topic,
         )
 
     # ── Pattern: "ôn nhiều nhất" / "nhiều lần nhất" ──────────────────────────
@@ -499,7 +615,7 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu ôn nhiều lần nhất...",
             action="get_questions", num=n,
-            sort_by="most_reviewed", difficulty=difficulty,
+            sort_by="most_reviewed", difficulty=difficulty, topic=topic,
         )
 
     # ── Pattern: "mới thêm" / "mới nhất" / "gần đây" ─────────────────────────
@@ -508,7 +624,7 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu mới thêm gần đây...",
             action="get_questions", num=n,
-            sort_by="newest", difficulty=difficulty,
+            sort_by="newest", difficulty=difficulty, topic=topic,
         )
 
     # ── Pattern: "cũ nhất" ───────────────────────────────────────────────────
@@ -517,7 +633,7 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu cũ nhất...",
             action="get_questions", num=n,
-            sort_by="oldest", difficulty=difficulty,
+            sort_by="oldest", difficulty=difficulty, topic=topic,
         )
 
     # ── Pattern: "chính xác / đúng X ngày" ───────────────────────────────────
@@ -534,10 +650,10 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu ôn đúng {days_exact} ngày trước...",
             action="get_questions", num=n,
-            days_exact=days_exact, difficulty=difficulty,
+            days_exact=days_exact, difficulty=difficulty, topic=topic,
         )
 
-    # ── Pattern: "từ X đến Y ngày" / "X-Y ngày" / "trong khoảng X đến Y" ────
+    # ── Pattern: "từ X đến Y ngày" / "X-Y ngày" ─────────────────────────────
     range_match = re.search(
         r"(?:từ|trong\s*khoảng)\s*(\d+)\s*(?:đến|tới|-)\s*(\d+)\s*(?:ngày|hôm)", text_lower
     )
@@ -553,7 +669,16 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu ôn cách đây {days_min}-{days_max} ngày...",
             action="get_questions", num=n,
-            days_min=days_min, days_max=days_max, difficulty=difficulty,
+            days_min=days_min, days_max=days_max, difficulty=difficulty, topic=topic,
+        )
+
+    # ── NEW: "câu về [topic]" — topic-only query ─────────────────────────────
+    if topic:
+        n = min(num or 5, 20)
+        return _default_intent(
+            reply=f"📝 Đang lấy {n} câu về {topic}...",
+            action="get_questions", num=n,
+            sort_by="newest", topic=topic, difficulty=difficulty,
         )
 
     # ── Pattern: Lấy câu hỏi ôn tập (generic) ───────────────────────────────
@@ -561,7 +686,6 @@ def _parse_intent_fallback(text: str) -> dict:
         r"(?:g[uử]i|cho\s*(?:tôi|mình)?|lấy|gửi)\s*(\d+)?\s*(?:câu|bài|bài tập)",
         text_lower,
     )
-    day_match = re.search(r"(\d+)\s*(?:ngày|hôm)", text_lower)
 
     if q_match:
         n = int(q_match.group(1)) if q_match.group(1) else 5
@@ -569,7 +693,7 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {min(n, 20)} câu cho bạn...",
             action="get_questions", num=min(n, 20),
-            days=days, difficulty=difficulty,
+            days=days, difficulty=difficulty, topic=topic,
         )
 
     # ── Từ khóa ôn tập ───────────────────────────────────────────────────────
@@ -579,13 +703,112 @@ def _parse_intent_fallback(text: str) -> dict:
         return _default_intent(
             reply=f"📝 Đang lấy {n} câu cho bạn...",
             action="get_questions", num=n,
-            days=days, difficulty=difficulty,
+            days=days, difficulty=difficulty, topic=topic,
         )
 
     # ── Không nhận diện ───────────────────────────────────────────────────────
     return _default_intent(
         reply="🤔 Tôi chưa hiểu yêu cầu đó.\n\nThử gõ: 'gửi 5 câu chưa ôn' hoặc 'hướng dẫn'",
     )
+
+
+def _dict_to_intent(d: dict) -> dict:
+    """Chuyển dict (từ n8n hoặc parsed JSON) thành intent dict chuẩn."""
+    return {
+        "reply": d.get("reply", ""),
+        "action": d.get("action", "none"),
+        "num": min(d.get("num", 5), 20),
+        "sort_by": d.get("sort_by", "due_date"),
+        "days": d.get("days", 0),
+        "days_exact": d.get("days_exact"),
+        "days_min": d.get("days_min"),
+        "days_max": d.get("days_max"),
+        "difficulty": d.get("difficulty"),
+        "never_reviewed": d.get("never_reviewed", False),
+        "topic": d.get("topic"),
+        "overdue": d.get("overdue", False),
+        "max_review_count": d.get("max_review_count"),
+        "exact_review_count": d.get("exact_review_count"),
+    }
+
+
+def _extract_intent_from_n8n_data(data: dict) -> dict:
+    """
+    Trích xuất intent từ response của n8n AI Agent.
+    Xử lý nhiều format trả về khác nhau:
+      1. Flat JSON: {"reply": "...", "action": "...", ...}  ← format chuẩn
+      2. Nested string: {"output": "{\"reply\":\"...\", ...}"}  ← AI trả JSON string
+      3. Array wrapper: [{"output": "..."}]  ← n8n wrap trong array
+    """
+    # Nếu data là list (n8n đôi khi wrap trong array), lấy phần tử đầu
+    if isinstance(data, list):
+        data = data[0] if data else {}
+
+    # ── Case 1: Flat JSON — các field intent nằm trực tiếp ở top-level ────────
+    if "action" in data and data.get("action") != "none":
+        return _dict_to_intent(data)
+
+    # ── Case 2: Intent JSON nằm trong field "output" hoặc "reply" dạng string ─
+    raw_text = data.get("output", "") or data.get("reply", "") or data.get("text", "")
+
+    if isinstance(raw_text, str) and raw_text.strip():
+        parsed = _try_parse_json_from_text(raw_text)
+        if parsed and "action" in parsed:
+            return _dict_to_intent(parsed)
+
+    # ── Case 3: Flat JSON với action=none (chat thường) ──────────────────────
+    reply_text = data.get("reply", "") or data.get("output", "") or data.get("text", "")
+
+    if isinstance(reply_text, str) and reply_text.strip().startswith("{"):
+        parsed = _try_parse_json_from_text(reply_text)
+        if parsed:
+            return _dict_to_intent(parsed)
+
+    result = _dict_to_intent(data)
+    result["reply"] = reply_text if isinstance(reply_text, str) else str(reply_text)
+    return result
+
+
+def _try_parse_json_from_text(text: str) -> dict | None:
+    """
+    Thử parse JSON từ text. Hỗ trợ cả trường hợp:
+      - Text thuần JSON: '{"reply":"...", ...}'
+      - Text có lẫn markdown code block: '```json\n{...}\n```'
+      - Text có JSON nằm giữa các đoạn text khác
+    """
+    import json as _json
+
+    text = text.strip()
+
+    # Thử parse trực tiếp
+    try:
+        result = _json.loads(text)
+        if isinstance(result, dict):
+            return result
+    except (ValueError, TypeError):
+        pass
+
+    # Thử tìm JSON trong markdown code block
+    code_block_match = re.search(r"```(?:json)?\s*\n?(\{.*?\})\s*\n?```", text, re.DOTALL)
+    if code_block_match:
+        try:
+            result = _json.loads(code_block_match.group(1))
+            if isinstance(result, dict):
+                return result
+        except (ValueError, TypeError):
+            pass
+
+    # Thử tìm JSON object đầu tiên trong text
+    json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text)
+    if json_match:
+        try:
+            result = _json.loads(json_match.group(0))
+            if isinstance(result, dict):
+                return result
+        except (ValueError, TypeError):
+            pass
+
+    return None
 
 
 async def _call_n8n_ai_agent(user_id: int, user_name: str, psid: str, message: str) -> dict | None:
@@ -609,20 +832,17 @@ async def _call_n8n_ai_agent(user_id: int, user_name: str, psid: str, message: s
             try:
                 data = resp.json()
             except Exception:
-                logger.warning(f"n8n trả về non-JSON: {resp.text[:200]}")
-                return None
+                # n8n trả về non-JSON — thử parse text trực tiếp
+                logger.warning(f"n8n trả về non-JSON, thử extract: {resp.text[:200]}")
+                parsed = _try_parse_json_from_text(resp.text)
+                if parsed:
+                    data = parsed
+                else:
+                    return None
 
-            return {
-                "reply": data.get("reply", data.get("output", "")),
-                "action": data.get("action", "none"),
-                "num": min(data.get("num", 5), 20),
-                "sort_by": data.get("sort_by", "due_date"),
-                "days": data.get("days", 0),
-                "days_exact": data.get("days_exact"),
-                "days_min": data.get("days_min"),
-                "days_max": data.get("days_max"),
-                "difficulty": data.get("difficulty"),
-            }
+            logger.info(f"n8n parsed data: {data}")
+            return _extract_intent_from_n8n_data(data)
+
     except httpx.TimeoutException:
         logger.warning("n8n AI timeout sau 30s")
         return None
@@ -766,6 +986,8 @@ async def facebook_receive_message(request: Request, db: Session = Depends(get_d
                 await _handle_get_questions(sender_psid, user.id, ai_resp, db)
             elif action == "get_stats":
                 await _handle_get_stats(sender_psid, user.id, user.name, db)
+            elif action == "get_stats_today":
+                await _handle_get_stats_today(sender_psid, user.id, user.name, db)
 
     return {"status": "ok"}
 
@@ -832,19 +1054,91 @@ async def _handle_get_questions(
 
 
 async def _handle_get_stats(psid: str, user_id: int, name: str, db: Session):
-    """Gửi thống kê câu cần ôn về Messenger."""
+    """Gửi thống kê chi tiết về Messenger."""
     due_today = _count_due_today(db, user_id)
     due_week = _count_due_week(db, user_id)
 
-    emoji = "🔥" if due_today > 0 else "✅"
-    await _send_messenger_message(
-        psid,
-        f"{emoji} Thống kê ôn tập của {name}:\n\n"
-        f"📌 Cần ôn hôm nay: {due_today} câu\n"
-        f"📅 Sắp đến hạn (7 ngày tới): {due_week} câu\n\n"
-        + (f"👉 Gõ 'gửi {min(due_today, 10)} câu' để bắt đầu ngay!" if due_today > 0
-           else "Hôm nay không có câu nào đến hạn. Làm tốt lắm! 🎊")
+    now = datetime.utcnow()
+
+    # Tổng số câu
+    total = (
+        db.query(func.count(Question.id))
+        .join(question_set_items, Question.id == question_set_items.c.question_id)
+        .filter(Question.user_id == user_id)
+        .scalar() or 0
     )
+
+    # Câu chưa ôn lần nào
+    never_reviewed = (
+        db.query(func.count(Question.id))
+        .join(question_set_items, Question.id == question_set_items.c.question_id)
+        .filter(Question.user_id == user_id, Question.review_count == 0)
+        .scalar() or 0
+    )
+
+    # Câu quá hạn
+    overdue = (
+        db.query(func.count(Question.id))
+        .join(question_set_items, Question.id == question_set_items.c.question_id)
+        .filter(
+            Question.user_id == user_id,
+            Question.next_review_at != None,
+            Question.next_review_at < now
+        )
+        .scalar() or 0
+    )
+
+    emoji = "🔥" if due_today > 0 else "✅"
+    msg = (
+        f"{emoji} Thống kê ôn tập của {name}:\n\n"
+        f"📊 Tổng số câu: {total}\n"
+        f"🆕 Chưa ôn lần nào: {never_reviewed}\n"
+        f"📌 Cần ôn hôm nay: {due_today}\n"
+        f"⏰ Quá hạn: {overdue}\n"
+        f"📅 Sắp đến hạn (7 ngày): {due_week}\n"
+    )
+
+    if due_today > 0:
+        msg += f"\n👉 Gõ 'gửi {min(due_today, 10)} câu' để bắt đầu ngay!"
+    elif never_reviewed > 0:
+        msg += f"\n💡 Còn {never_reviewed} câu chưa ôn. Gõ 'câu chưa ôn lần nào' để xem!"
+    else:
+        msg += "\n🎊 Tuyệt vời! Bạn đã hoàn thành hết rồi!"
+
+    await _send_messenger_message(psid, msg)
+
+
+async def _handle_get_stats_today(psid: str, user_id: int, name: str, db: Session):
+    """Gửi thống kê đã ôn hôm nay."""
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    reviewed_today = (
+        db.query(func.count(Question.id))
+        .join(question_set_items, Question.id == question_set_items.c.question_id)
+        .filter(
+            Question.user_id == user_id,
+            Question.last_used_at >= today_start,
+        )
+        .scalar() or 0
+    )
+
+    due_today = _count_due_today(db, user_id)
+
+    if reviewed_today > 0:
+        msg = (
+            f"📈 Hôm nay {name} đã ôn {reviewed_today} câu!\n"
+        )
+        if due_today > 0:
+            msg += f"\n📌 Còn {due_today} câu cần ôn. Gõ 'gửi {min(due_today, 10)} câu' để tiếp tục!"
+        else:
+            msg += "\n🎉 Không còn câu nào cần ôn hôm nay. Tuyệt vời!"
+    else:
+        msg = "📭 Hôm nay bạn chưa ôn câu nào.\n"
+        if due_today > 0:
+            msg += f"\n📌 Có {due_today} câu đang chờ. Gõ 'gửi {min(due_today, 10)} câu' để bắt đầu!"
+
+    await _send_messenger_message(psid, msg)
 
 
 # ── GET /users-due — n8n Cron gọi để lấy danh sách user cần thông báo ────────

@@ -29,7 +29,7 @@
           "parameters": [
             {
               "name": "secret",
-              "value": "={{ $env.N8N_SECRET || 'change-this-n8n-secret' }}"
+              "value": "my-super-secret-n8n-key-2024"
             }
           ]
         },
@@ -81,7 +81,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v19.0/{{ $env.FB_PAGE_ID || 'YOUR_PAGE_ID' }}/messages",
+        "url": "https://graph.facebook.com/v19.0/891572780710628/messages",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpQueryAuth",
         "sendQuery": true,
@@ -89,7 +89,7 @@
           "parameters": [
             {
               "name": "access_token",
-              "value": "={{ $env.FB_PAGE_ACCESS_TOKEN || 'PASTE_YOUR_PAGE_ACCESS_TOKEN_HERE' }}"
+              "value": "EAALKKZAlL09UBRVHh4MgPVydZAj2i2FAjfMTW5Mr7KR22hdVJfEageuZAcFMe8U91BZBp65eE61gIdr1Nh4vjlDars7gS4T3QwrJPLz0PS5HwLWgE7LxxAZBGjYMIElsnqlLLnxsW97zZAIXDpZBZAgUEnReKcIp8aZC5jdbabmf9Wo2CvwDPMoaO5HEGZCYPqPBKyj1F6ZAGpTkMBHzxLi1oXWDnNg4nY8pdhqAlYPYM87FA4ZD"
             }
           ]
         },
